@@ -89,12 +89,16 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />
+    <Text Include="LICENSE.txt" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="extra-manufacturer-data-2022-12-14.pdf" />
+    <None Include="README.md" />
     <None Include="victronbtlelogger-version.h.in" />
     <None Include="postinst" />
     <None Include="postrm" />
     <None Include="prerm" />
+    <None Include="victronbtlelogger.service" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
