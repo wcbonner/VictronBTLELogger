@@ -21,7 +21,7 @@ if (POLICY CMP0115)
 endif()
 
 project (VictronBTLELogger
-    VERSION 3.20240828.0
+    VERSION 3.20240901.0
     DESCRIPTION "Listen and log Victron Direct Bluetooth Low Energy Advertisments via BlueZ and DBus"
     HOMEPAGE_URL https://github.com/wcbonner/VictronBTLELogger
 )
@@ -30,8 +30,11 @@ configure_file(
     victronbtlelogger-version.h.in
     victronbtlelogger-version.h)
 
-include( FindPkgConfig )
-pkg_check_modules( dbus REQUIRED dbus-1 )
+find_package(FindPkgConfig REQUIRED)
+pkg_check_modules(DBUS REQUIRED dbus-1)
+if(NOT DBUS_FOUND)
+  message(FATAL_ERROR "dbus-1 not found! sudo apt install libdbus-1-dev" )
+endif()
 
 # Add source to this project's executable.
 add_executable (victronbtlelogger
@@ -43,7 +46,7 @@ add_executable (victronbtlelogger
 
 target_link_libraries(victronbtlelogger
     -lstdc++fs
-    -ldbus-1
+    ${DBUS_LIBRARIES}
     )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
@@ -53,7 +56,11 @@ endif()
 target_include_directories(victronbtlelogger PUBLIC
     "${PROJECT_BINARY_DIR}"
     ${EXTRA_INCLUDES}
-    ${dbus_INCLUDE_DIRS}
+    ${DBUS_INCLUDE_DIRS}
+    )
+
+target_compile_options(victronbtlelogger PUBLIC 
+    ${DBUS_CFLAGS_OTHER}
     )
 
 # TODO: Add tests and install targets if needed.
