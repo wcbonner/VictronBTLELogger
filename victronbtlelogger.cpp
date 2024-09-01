@@ -27,11 +27,16 @@
 #include <csignal>
 #include <dbus/dbus.h> //  sudo apt install libdbus-1-dev
 #include <getopt.h>
+#include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <locale>
 #include <map>
 #include <regex>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <vector>
 #include "wimiso8601.h"
 
@@ -127,6 +132,49 @@ bdaddr_t string2ba(const std::string& TheBlueToothAddressString)
 			TheBlueToothAddress.b[index--] = std::stoi(byteString, nullptr, 16);
 	}
 	return(TheBlueToothAddress); 
+}
+/////////////////////////////////////////////////////////////////////////////
+std::map<bdaddr_t, std::string> VictronEncryptionKeys;
+bool ReadVictronEncryptionKeys(const std::filesystem::path& VictronEncryptionKeysFilename)
+{
+	bool rval = false;
+	static time_t LastModified = 0;
+	struct stat64 VictronEncryptionKeysFileStat;
+	VictronEncryptionKeysFileStat.st_mtim.tv_sec = 0;
+	if (0 == stat64(VictronEncryptionKeysFilename.c_str(), &VictronEncryptionKeysFileStat))
+	{
+		rval = true;
+		if (VictronEncryptionKeysFileStat.st_mtim.tv_sec > LastModified)	// only read the file if it's modified
+		{
+			std::ifstream TheFile(VictronEncryptionKeysFilename);
+			if (TheFile.is_open())
+			{
+				LastModified = VictronEncryptionKeysFileStat.st_mtim.tv_sec;	// only update our time if the file is actually read
+				if (ConsoleVerbosity > 0)
+					std::cout << "[" << getTimeISO8601() << "] Reading: " << VictronEncryptionKeysFilename.string() << std::endl;
+				else
+					std::cerr << "Reading: " << VictronEncryptionKeysFilename.string() << std::endl;
+				std::string TheLine;
+
+				while (std::getline(TheFile, TheLine))
+				{
+					const std::regex BluetoothAddressRegex("((([[:xdigit:]]{2}:){5}))[[:xdigit:]]{2}");
+					std::smatch BluetoothAddress;
+					if (std::regex_search(TheLine, BluetoothAddress, BluetoothAddressRegex))
+					{
+						bdaddr_t TheBlueToothAddress(string2ba(BluetoothAddress.str()));
+						const std::string delimiters(" \t");
+						auto i = TheLine.find_first_of(delimiters);		// Find first delimiter
+						i = TheLine.find_first_not_of(delimiters, i);	// Move past consecutive delimiters
+						std::string theTitle = (i == std::string::npos) ? "" : TheLine.substr(i);
+						VictronEncryptionKeys.insert(std::make_pair(TheBlueToothAddress, theTitle));
+					}
+				}
+				TheFile.close();
+			}
+		}
+	}
+	return(rval);
 }
 /////////////////////////////////////////////////////////////////////////////
 const char* dbus_message_iter_type_to_string(const int type)
