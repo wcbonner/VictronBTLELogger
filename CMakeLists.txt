@@ -30,7 +30,12 @@ configure_file(
     victronbtlelogger-version.h.in
     victronbtlelogger-version.h)
 
-find_package(FindPkgConfig REQUIRED)
+include(FindPkgConfig)
+if(NOT PKG_CONFIG_FOUND)
+  message(FATAL_ERROR "pkg-config not found!" )
+endif()
+# find_package(FindPkgConfig REQUIRED)
+
 pkg_check_modules(DBUS REQUIRED dbus-1)
 if(NOT DBUS_FOUND)
   message(FATAL_ERROR "dbus-1 not found! sudo apt install libdbus-1-dev" )
