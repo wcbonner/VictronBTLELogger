@@ -31,6 +31,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <locale>
 #include <map>
 #include <regex>
@@ -404,23 +405,36 @@ void bluez_filter_le(DBusConnection* dbus_conn, const char* adapter_path, const 
 			DBusMessageIter iterArray;
 			dbus_message_iter_open_container(&iterParameter, DBUS_TYPE_ARRAY, "{sv}", &iterArray);
 			DBusMessageIter iterDict;
+
 			dbus_message_iter_open_container(&iterArray, DBUS_TYPE_DICT_ENTRY, NULL, &iterDict);
-			const char* cpTransport = "Transport";
-			dbus_message_iter_append_basic(&iterDict, DBUS_TYPE_STRING, &cpTransport);
-			DBusMessageIter iterVariant;
-			dbus_message_iter_open_container(&iterDict, DBUS_TYPE_VARIANT, DBUS_TYPE_STRING_AS_STRING, &iterVariant);
-			const char* cpBTLE = "le";
-			dbus_message_iter_append_basic(&iterVariant, DBUS_TYPE_STRING, &cpBTLE);
-			dbus_message_iter_close_container(&iterDict, &iterVariant);
+				const char* cpTransport = "Transport";
+				dbus_message_iter_append_basic(&iterDict, DBUS_TYPE_STRING, &cpTransport);
+				DBusMessageIter iterVariant;
+				dbus_message_iter_open_container(&iterDict, DBUS_TYPE_VARIANT, DBUS_TYPE_STRING_AS_STRING, &iterVariant);
+				const char* cpBTLE = "le";
+				dbus_message_iter_append_basic(&iterVariant, DBUS_TYPE_STRING, &cpBTLE);
+				dbus_message_iter_close_container(&iterDict, &iterVariant);
 			dbus_message_iter_close_container(&iterArray, &iterDict);
+
 			dbus_message_iter_open_container(&iterArray, DBUS_TYPE_DICT_ENTRY, NULL, &iterDict);
-			const char* cpDuplicateData = "DuplicateData";
-			dbus_message_iter_append_basic(&iterDict, DBUS_TYPE_STRING, &cpDuplicateData);
-			dbus_message_iter_open_container(&iterDict, DBUS_TYPE_VARIANT, DBUS_TYPE_BOOLEAN_AS_STRING, &iterVariant);
-			dbus_bool_t cpTrue = DuplicateData ? TRUE : FALSE;
-			dbus_message_iter_append_basic(&iterVariant, DBUS_TYPE_BOOLEAN, &cpTrue);
-			dbus_message_iter_close_container(&iterDict, &iterVariant);
+				const char* cpDuplicateData = "DuplicateData";
+				dbus_message_iter_append_basic(&iterDict, DBUS_TYPE_STRING, &cpDuplicateData);
+				dbus_message_iter_open_container(&iterDict, DBUS_TYPE_VARIANT, DBUS_TYPE_BOOLEAN_AS_STRING, &iterVariant);
+				dbus_bool_t cpTrue = DuplicateData ? TRUE : FALSE;
+				dbus_message_iter_append_basic(&iterVariant, DBUS_TYPE_BOOLEAN, &cpTrue);
+				dbus_message_iter_close_container(&iterDict, &iterVariant);
 			dbus_message_iter_close_container(&iterArray, &iterDict);
+
+			dbus_message_iter_open_container(&iterArray, DBUS_TYPE_DICT_ENTRY, NULL, &iterDict);
+				const char* cpRSSI = "RSSI";
+				dbus_message_iter_append_basic(&iterDict, DBUS_TYPE_STRING, &cpRSSI);
+				dbus_message_iter_open_container(&iterDict, DBUS_TYPE_VARIANT, DBUS_TYPE_INT16_AS_STRING, &iterVariant);
+				//dbus_int16_t cpRSSIValue = std::numeric_limits<dbus_int16_t>::min();
+				dbus_int16_t cpRSSIValue = -100;
+				dbus_message_iter_append_basic(&iterVariant, DBUS_TYPE_INT16, &cpRSSIValue);
+				dbus_message_iter_close_container(&iterDict, &iterVariant);
+			dbus_message_iter_close_container(&iterArray, &iterDict);
+
 			dbus_message_iter_close_container(&iterParameter, &iterArray);
 		}
 		else
@@ -763,17 +777,20 @@ static void usage(int argc, char** argv)
 	std::cout << "    -h | --help          Print this message" << std::endl;
 	std::cout << "    -v | --verbose level stdout verbosity level [" << ConsoleVerbosity << "]" << std::endl;
 	std::cout << "    -k | --keyfile filename [" << VictronEncryptionKeyFilename << "]" << std::endl;
+	std::cout << "    -C | --controller XX:XX:XX:XX:XX:XX use the controller with this address" << std::endl;
 	std::cout << std::endl;
 }
-static const char short_options[] = "hv:k:";
+static const char short_options[] = "hv:k:C:";
 static const struct option long_options[] = {
 		{ "help",   no_argument,       NULL, 'h' },
 		{ "verbose",required_argument, NULL, 'v' },
 		{ "keyfile",required_argument, NULL, 'k' },
+		{ "controller", required_argument, NULL, 'C' },
 		{ 0, 0, 0, 0 }
 };
 int main(int argc, char** argv) 
 {
+	std::string ControllerAddress;
 	for (;;)
 	{
 		std::filesystem::path TempPath;
@@ -798,6 +815,9 @@ int main(int argc, char** argv)
 			TempPath = std::string(optarg);
 			if (ReadVictronEncryptionKeys(TempPath))
 				VictronEncryptionKeyFilename = TempPath;
+			break;
+		case 'C':	// --controller
+			ControllerAddress = std::string(optarg);
 			break;
 		default:
 			usage(argc, argv);
@@ -841,9 +861,9 @@ int main(int argc, char** argv)
 		if (!BlueZAdapterMap.empty())
 		{
 			std::string BlueZAdapter(BlueZAdapterMap.cbegin()->second);
-			//if (!ControllerAddress.empty())
-			//	if (auto search = BlueZAdapterMap.find(string2ba(ControllerAddress)); search != BlueZAdapterMap.end())
-			//		BlueZAdapter = search->second;
+			if (!ControllerAddress.empty())
+				if (auto search = BlueZAdapterMap.find(string2ba(ControllerAddress)); search != BlueZAdapterMap.end())
+					BlueZAdapter = search->second;
 
 			bluez_power_on(dbus_conn, BlueZAdapter.c_str());
 			bluez_filter_le(dbus_conn, BlueZAdapter.c_str());
