@@ -506,8 +506,8 @@ bool bluez_discovery(DBusConnection* dbus_conn, const char* adapter_path, const 
 std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, bdaddr_t& dbusBTAddress)
 {
 	std::ostringstream ssOutput;
-	//auto foo = VictronEncryptionKeys.find(dbusBTAddress);
-	//if (foo != VictronEncryptionKeys.end())
+	auto foo = VictronEncryptionKeys.find(dbusBTAddress);
+	if (foo != VictronEncryptionKeys.end())
 	do
 	{
 		DBusMessageIter dict2_iter;
@@ -577,7 +577,7 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, bdaddr_t& dbusBTAdd
 												ManufacturerData.push_back(value.byt);
 											}
 										} while (dbus_message_iter_next(&array4_iter));
-										ssOutput << "[                   ] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << std::setfill('0') << std::hex << std::setw(4) << ManufacturerID << ":";
+										ssOutput << "[" << getTimeISO8601(true) << "] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << std::setfill('0') << std::hex << std::setw(4) << ManufacturerID << ":";
 										for (auto& Data : ManufacturerData)
 											ssOutput << std::setw(2) << int(Data);
 										if (ConsoleVerbosity > 4)
