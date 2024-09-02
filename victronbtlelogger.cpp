@@ -118,10 +118,10 @@ std::string ba2string(const bdaddr_t& TheBlueToothAddress)
 	}
 	return (oss.str());
 }
+const std::regex BluetoothAddressRegex("((([[:xdigit:]]{2}:){5}))[[:xdigit:]]{2}");
 bdaddr_t string2ba(const std::string& TheBlueToothAddressString)
 { 
 	bdaddr_t TheBlueToothAddress({ 0 });
-	const std::regex BluetoothAddressRegex("((([[:xdigit:]]{2}:){5}))[[:xdigit:]]{2}");
 	if (std::regex_match(TheBlueToothAddressString, BluetoothAddressRegex))
 	{
 		std::stringstream ss(TheBlueToothAddressString);
@@ -134,6 +134,7 @@ bdaddr_t string2ba(const std::string& TheBlueToothAddressString)
 	return(TheBlueToothAddress); 
 }
 /////////////////////////////////////////////////////////////////////////////
+std::filesystem::path VictronEncryptionKeyFilename("victronencryptionkeys.txt");
 std::map<bdaddr_t, std::string> VictronEncryptionKeys;
 bool ReadVictronEncryptionKeys(const std::filesystem::path& VictronEncryptionKeysFilename)
 {
@@ -151,23 +152,24 @@ bool ReadVictronEncryptionKeys(const std::filesystem::path& VictronEncryptionKey
 			{
 				LastModified = VictronEncryptionKeysFileStat.st_mtim.tv_sec;	// only update our time if the file is actually read
 				if (ConsoleVerbosity > 0)
-					std::cout << "[" << getTimeISO8601() << "] Reading: " << VictronEncryptionKeysFilename.string() << std::endl;
+					std::cout << "[" << getTimeISO8601(true) << "] Reading: " << VictronEncryptionKeysFilename.string() << std::endl;
 				else
 					std::cerr << "Reading: " << VictronEncryptionKeysFilename.string() << std::endl;
 				std::string TheLine;
 
 				while (std::getline(TheFile, TheLine))
 				{
-					const std::regex BluetoothAddressRegex("((([[:xdigit:]]{2}:){5}))[[:xdigit:]]{2}");
 					std::smatch BluetoothAddress;
 					if (std::regex_search(TheLine, BluetoothAddress, BluetoothAddressRegex))
 					{
-						bdaddr_t TheBlueToothAddress(string2ba(BluetoothAddress.str()));
+						bdaddr_t theBlueToothAddress(string2ba(BluetoothAddress.str()));
 						const std::string delimiters(" \t");
 						auto i = TheLine.find_first_of(delimiters);		// Find first delimiter
 						i = TheLine.find_first_not_of(delimiters, i);	// Move past consecutive delimiters
-						std::string theTitle = (i == std::string::npos) ? "" : TheLine.substr(i);
-						VictronEncryptionKeys.insert(std::make_pair(TheBlueToothAddress, theTitle));
+						std::string theEncryptionKey((i == std::string::npos) ? "" : TheLine.substr(i));
+						VictronEncryptionKeys.insert(std::make_pair(theBlueToothAddress, theEncryptionKey));
+						if (ConsoleVerbosity > 1)
+							std::cout << "[                   ] [" << ba2string(theBlueToothAddress) << "] " << theEncryptionKey << std::endl;
 					}
 				}
 				TheFile.close();
@@ -376,7 +378,7 @@ void bluez_power_on(DBusConnection* dbus_conn, const char* adapter_path, const b
 		dbus_message_iter_close_container(&iterParameter, &variant); // https://dbus.freedesktop.org/doc/api/html/group__DBusMessage.html#gaf00482f63d4af88b7851621d1f24087a
 		dbus_connection_send(dbus_conn, dbus_msg, NULL); // https://dbus.freedesktop.org/doc/api/html/group__DBusConnection.html#gae1cb64f4cf550949b23fd3a756b2f7d0
 		if (ConsoleVerbosity > 0)
-			std::cout << "[                   ] " << dbus_message_get_path(dbus_msg) << ": " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg) << powered << ": " << std::boolalpha << PowerOn << std::endl;
+			std::cout << "[" << getTimeISO8601(true) << "] " << dbus_message_get_path(dbus_msg) << ": " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg) << powered << ": " << std::boolalpha << PowerOn << std::endl;
 		else
 			std::cerr << dbus_message_get_path(dbus_msg) << ": " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg) << powered << ": " << std::boolalpha << PowerOn << std::endl;
 		dbus_message_unref(dbus_msg); // https://dbus.freedesktop.org/doc/api/html/group__DBusMessage.html#gab69441efe683918f6a82469c8763f464
@@ -437,7 +439,7 @@ void bluez_filter_le(DBusConnection* dbus_conn, const char* adapter_path, const 
 		dbus_error_init(&dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusErrors.html#ga8937f0b7cdf8554fa6305158ce453fbe
 		DBusMessage* dbus_reply = dbus_connection_send_with_reply_and_block(dbus_conn, dbus_msg, DBUS_TIMEOUT_INFINITE, &dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusConnection.html#ga8d6431f17a9e53c9446d87c2ba8409f0
 		if (ConsoleVerbosity > 0)
-			ssOutput << "[                   ] ";
+			ssOutput << "[" << getTimeISO8601(true) << "] ";
 		ssOutput << dbus_message_get_path(dbus_msg) << ": " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg) << std::endl;
 		if (!dbus_reply)
 		{
@@ -478,7 +480,7 @@ bool bluez_discovery(DBusConnection* dbus_conn, const char* adapter_path, const 
 		dbus_error_init(&dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusErrors.html#ga8937f0b7cdf8554fa6305158ce453fbe
 		DBusMessage* dbus_reply = dbus_connection_send_with_reply_and_block(dbus_conn, dbus_msg, DBUS_TIMEOUT_INFINITE, &dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusConnection.html#ga8d6431f17a9e53c9446d87c2ba8409f0
 		if (ConsoleVerbosity > 0)
-			std::cout << "[                   ] " << dbus_message_get_path(dbus_msg) << ": " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg) << std::endl;
+			std::cout << "[" << getTimeISO8601(true) << "] " << dbus_message_get_path(dbus_msg) << ": " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg) << std::endl;
 		else
 			std::cerr << dbus_message_get_path(dbus_msg) << ": " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg) << std::endl;
 		if (!dbus_reply)
@@ -504,6 +506,8 @@ bool bluez_discovery(DBusConnection* dbus_conn, const char* adapter_path, const 
 std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, bdaddr_t& dbusBTAddress)
 {
 	std::ostringstream ssOutput;
+	//auto foo = VictronEncryptionKeys.find(dbusBTAddress);
+	//if (foo != VictronEncryptionKeys.end())
 	do
 	{
 		DBusMessageIter dict2_iter;
@@ -758,18 +762,21 @@ static void usage(int argc, char** argv)
 	std::cout << "  Options:" << std::endl;
 	std::cout << "    -h | --help          Print this message" << std::endl;
 	std::cout << "    -v | --verbose level stdout verbosity level [" << ConsoleVerbosity << "]" << std::endl;
+	std::cout << "    -k | --keyfile filename [" << VictronEncryptionKeyFilename << "]" << std::endl;
 	std::cout << std::endl;
 }
-static const char short_options[] = "hv:";
+static const char short_options[] = "hv:k:";
 static const struct option long_options[] = {
 		{ "help",   no_argument,       NULL, 'h' },
 		{ "verbose",required_argument, NULL, 'v' },
+		{ "keyfile",required_argument, NULL, 'k' },
 		{ 0, 0, 0, 0 }
 };
 int main(int argc, char** argv) 
 {
 	for (;;)
 	{
+		std::filesystem::path TempPath;
 		int idx;
 		int c = getopt_long(argc, argv, short_options, long_options, &idx);
 		if (-1 == c)
@@ -787,6 +794,11 @@ int main(int argc, char** argv)
 			catch (const std::invalid_argument& ia) { std::cerr << "Invalid argument: " << ia.what() << std::endl; exit(EXIT_FAILURE); }
 			catch (const std::out_of_range& oor) { std::cerr << "Out of Range error: " << oor.what() << std::endl; exit(EXIT_FAILURE); }
 			break;
+		case 'k':	// --keyfile
+			TempPath = std::string(optarg);
+			if (ReadVictronEncryptionKeys(TempPath))
+				VictronEncryptionKeyFilename = TempPath;
+			break;
 		default:
 			usage(argc, argv);
 			exit(EXIT_FAILURE);
@@ -797,6 +809,8 @@ int main(int argc, char** argv)
 		std::cout << "[" << getTimeISO8601(true) << "] " << ProgramVersionString << std::endl;
 	else
 		std::cerr << ProgramVersionString << std::endl;
+
+	ReadVictronEncryptionKeys(VictronEncryptionKeyFilename);
 
 	DBusError dbus_error;
 	dbus_error_init(&dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusErrors.html#ga8937f0b7cdf8554fa6305158ce453fbe
