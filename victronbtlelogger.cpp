@@ -34,6 +34,7 @@
 #include <limits>
 #include <locale>
 #include <map>
+#include <openssl/aes.h> // sudo apt install libssl-dev
 #include <regex>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -517,6 +518,12 @@ bool bluez_discovery(DBusConnection* dbus_conn, const char* adapter_path, const 
 	return(bStarted);
 }
 /////////////////////////////////////////////////////////////////////////////
+void decrypt_aes(const uint8_t* ciphertext, uint8_t* plaintext, const uint8_t* key, const uint8_t* iv)
+{
+	AES_KEY dec_key;
+	AES_set_decrypt_key(key, 128, &dec_key);
+	AES_cbc_encrypt(ciphertext, plaintext, strlen((const char*)ciphertext), &dec_key, (uint8_t*)iv, AES_DECRYPT);
+}
 std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, bdaddr_t& dbusBTAddress)
 {
 	std::ostringstream ssOutput;
@@ -591,6 +598,21 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, bdaddr_t& dbusBTAdd
 												ManufacturerData.push_back(value.byt);
 											}
 										} while (dbus_message_iter_next(&array4_iter));
+
+										// Example key and IV (Initialization Vector)
+										uint8_t key[16] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
+										uint8_t iv[16] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
+										// Example ciphertext (must be a multiple of AES_BLOCK_SIZE)
+										uint8_t ciphertext[] = { 0x76, 0x49, 0xab, 0xac, 0x81, 0x19, 0xb2, 0x46, 0xce, 0xe9, 0x8e, 0x9b, 0x12, 0xe9, 0x19, 0x7d };
+										// Buffer for the decrypted text
+										uint8_t decryptedtext[sizeof(ciphertext)];
+										// Decrypt the ciphertext
+										decrypt_aes(ciphertext, decryptedtext, key, iv);
+										// Null-terminate the decrypted text
+										decryptedtext[sizeof(ciphertext)] = '\0';
+										// Print the decrypted text
+										ssOutput << "Decrypted text: " << decryptedtext << std::endl;
+
 										ssOutput << "[" << getTimeISO8601(true) << "] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << std::setfill('0') << std::hex << std::setw(4) << ManufacturerID << ":";
 										for (auto& Data : ManufacturerData)
 											ssOutput << std::setw(2) << int(Data);

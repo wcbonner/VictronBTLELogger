@@ -41,6 +41,11 @@ if(NOT DBUS_FOUND)
   message(FATAL_ERROR "dbus-1 not found! sudo apt install libdbus-1-dev" )
 endif()
 
+pkg_check_modules(CRYPTO crypto)
+if(NOT CRYPTO_FOUND)
+  message(FATAL_ERROR "crypto not found! sudo apt install libssl-dev" )
+endif()
+
 # Add source to this project's executable.
 add_executable (victronbtlelogger
     victronbtlelogger.cpp
@@ -52,6 +57,7 @@ add_executable (victronbtlelogger
 target_link_libraries(victronbtlelogger
     -lstdc++fs
     ${DBUS_LIBRARIES}
+    ${CRYPTO_LIBRARIES}
     )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
@@ -62,10 +68,12 @@ target_include_directories(victronbtlelogger PUBLIC
     "${PROJECT_BINARY_DIR}"
     ${EXTRA_INCLUDES}
     ${DBUS_INCLUDE_DIRS}
+    ${CRYPTO_INCLUDE_DIRS}
     )
 
 target_compile_options(victronbtlelogger PUBLIC 
     ${DBUS_CFLAGS_OTHER}
+    ${CRYPTO_CFLAGS_OTHER}
     )
 
 # TODO: Add tests and install targets if needed.

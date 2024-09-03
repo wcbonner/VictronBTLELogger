@@ -105,7 +105,7 @@
       <CppLanguageStandard>c++17</CppLanguageStandard>
     </ClCompile>
     <Link>
-      <LibraryDependencies>dbus-1</LibraryDependencies>
+      <LibraryDependencies>dbus-1;crypto</LibraryDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
@@ -113,7 +113,7 @@
       <CppLanguageStandard>c++17</CppLanguageStandard>
     </ClCompile>
     <Link>
-      <LibraryDependencies>dbus-1</LibraryDependencies>
+      <LibraryDependencies>dbus-1;crypto</LibraryDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
