@@ -34,7 +34,7 @@
 #include <limits>
 #include <locale>
 #include <map>
-#include <openssl/aes.h> // sudo apt install libssl-dev
+#include <openssl/evp.h> // sudo apt install libssl-dev
 #include <regex>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -518,17 +518,11 @@ bool bluez_discovery(DBusConnection* dbus_conn, const char* adapter_path, const 
 	return(bStarted);
 }
 /////////////////////////////////////////////////////////////////////////////
-void decrypt_aes(const uint8_t* ciphertext, uint8_t* plaintext, const uint8_t* key, const uint8_t* iv)
-{
-	AES_KEY dec_key;
-	AES_set_decrypt_key(key, 128, &dec_key);
-	AES_cbc_encrypt(ciphertext, plaintext, strlen((const char*)ciphertext), &dec_key, (uint8_t*)iv, AES_DECRYPT);
-}
 std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, bdaddr_t& dbusBTAddress)
 {
 	std::ostringstream ssOutput;
-	auto foo = VictronEncryptionKeys.find(dbusBTAddress);
-	if (foo != VictronEncryptionKeys.end())
+	auto Device = VictronEncryptionKeys.find(dbusBTAddress);
+	if (Device != VictronEncryptionKeys.end())
 	do
 	{
 		DBusMessageIter dict2_iter;
@@ -599,20 +593,6 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, bdaddr_t& dbusBTAdd
 											}
 										} while (dbus_message_iter_next(&array4_iter));
 
-										// Example key and IV (Initialization Vector)
-										uint8_t key[16] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
-										uint8_t iv[16] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
-										// Example ciphertext (must be a multiple of AES_BLOCK_SIZE)
-										uint8_t ciphertext[] = { 0x76, 0x49, 0xab, 0xac, 0x81, 0x19, 0xb2, 0x46, 0xce, 0xe9, 0x8e, 0x9b, 0x12, 0xe9, 0x19, 0x7d };
-										// Buffer for the decrypted text
-										uint8_t decryptedtext[sizeof(ciphertext)];
-										// Decrypt the ciphertext
-										decrypt_aes(ciphertext, decryptedtext, key, iv);
-										// Null-terminate the decrypted text
-										decryptedtext[sizeof(ciphertext)] = '\0';
-										// Print the decrypted text
-										ssOutput << "Decrypted text: " << decryptedtext << std::endl;
-
 										ssOutput << "[" << getTimeISO8601(true) << "] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << std::setfill('0') << std::hex << std::setw(4) << ManufacturerID << ":";
 										for (auto& Data : ManufacturerData)
 											ssOutput << std::setw(2) << int(Data);
@@ -631,7 +611,125 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, bdaddr_t& dbusBTAdd
 											if (0x02E1 == ManufacturerID)
 												ssOutput << "'Victron Energy BV'";
 										}
-										ssOutput << std::endl;
+										std::vector<uint8_t> EncryptionKey;
+										for (size_t i = 0; i < Device->second.length(); i += 2)
+										{
+											std::string byteString(Device->second.substr(i, 2));
+											uint8_t byteValue(static_cast<uint8_t>(std::stoi(byteString, nullptr, 16)));
+											EncryptionKey.push_back(byteValue);
+										}
+										if (ManufacturerData[7] == EncryptionKey[0]) // if stored key doesnt start with this data, we need to update stored key
+										{
+											union {
+												uint8_t rawbytes[32];
+												struct __attribute__((packed))
+												{
+													unsigned int device_state : 8;
+													unsigned int charger_error : 8;
+													int battery_voltage : 16;
+													int battery_current : 16;
+													unsigned int yield_today : 16;
+													unsigned int pv_power : 16;
+													unsigned int load_current : 9;
+													unsigned int unused : 39;
+												} SolarCharger;  // 0x01
+												struct __attribute__((packed))
+												{
+													unsigned int device_state : 8;
+													unsigned int charger_error : 8;
+													unsigned int input_voltage : 16;
+													unsigned int output_voltage : 16;
+													unsigned int off_reason : 32;
+													unsigned int unused : 48;
+												} DCDCConverter; // 0x04
+												struct __attribute__((packed))
+												{
+													unsigned int bms_flags : 32;
+													unsigned int smartlithium_error : 16;
+													unsigned int cell_1 : 7;
+													unsigned int cell_2 : 7;
+													unsigned int cell_3 : 7;
+													unsigned int cell_4 : 7;
+													unsigned int cell_5 : 7;
+													unsigned int cell_6 : 7;
+													unsigned int cell_7 : 7;
+													unsigned int cell_8 : 7;
+													unsigned int battery_voltage : 12;
+													unsigned int balancer_status : 4;
+													unsigned int battery_temperature : 7;
+													unsigned int unused : 1;
+												} SmartLithium;  // 0x05
+											} DecryptedData({ 0 });
+											if (sizeof(DecryptedData) >= (ManufacturerData.size() - 8)) // simple check to make sure we don't buffer overflow
+											{
+												//[2024-09-04T04:47:30] [CE:A5:D7:7B:CD:81] Name: S/V Sola Batt 1
+												//                                                                 0 1 2 3  4  5 6  7  8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 
+												//[2024-09-03T21:47:30] [CE:A5:D7:7B:CD:81] ManufacturerData: 02e1:1000eba0 05 35a2 d9 2d331d1ab2f30574993493ead132be09 'Victron Energy BV'
+												//[2024-09-03T21:47:37] [CE:A5:D7:7B:CD:81] ManufacturerData: 02e1:1000eba0 05 3ba2 d9 53fefc2f4ce0fac5905e13b24c6ef6c2 'Victron Energy BV'
+												//[2024-09-03T21:47:37] [CE:A5:D7:7B:CD:81] ManufacturerData: 02e1:1000eba0 05 3ba2 d9 53fefc2f4ce0fac5905e13b24c6ef6c2 'Victron Energy BV'										
+												//                                                                          0  1 2  3  4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9     
+												//[2024-09-04T16:56:06] [D3:D1:90:54:EB:F0] Name: S/V Sola Orion XS
+												//[2024-09-04T09:56:06] [D3:D1:90:54:EB:F0] ManufacturerData: 02e1:1000f0a3 0f 526d 4a 75a80473b5ec702716a85f2db193 'Victron Energy BV'
+												// https://community.victronenergy.com/questions/187303/victron-bluetooth-advertising-protocol.html
+												//Byte [0] is the Manufacturer Data Record type and is always 0x10.
+												//Byte [1] and [2] are the model id. In my case the 0x02 0x57 means I have the MPPT 100/50 (I forget where I found this info but it's always 2 bytes and it's not really needed for decryption)
+												//Byte [3] is the "read out type" which was always 0xA0 in my case but i didn't use this byte at all
+												//
+												//The first 4 bytes aren't mentioned in the provided documentation so it was difficult to figure out where the "extra data" started. Now we get into the bytes documented:
+												//Byte [4] is the record type. In my case it was always 0x01 because I have a "Solar Charger"
+												//Byte [5] and [6] are the Nonce/Data Counter used for decryption (more on this later)
+												//Byte [7] should match the first byte of your devices encryption key. In my case this was 0x20.
+												//
+												//The rest of the bytes are the encrypted data of which there are 12 bytes for my Victron device.
+												EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+												if (ctx != 0)
+												{
+													std::vector<uint8_t> InitializationVector;
+													InitializationVector.push_back(ManufacturerData[5]);
+													InitializationVector.push_back(ManufacturerData[6]);
+													while (InitializationVector.size() < 16)
+														InitializationVector.push_back(0);
+
+													if (1 == EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, EncryptionKey.data(), InitializationVector.data()))
+													{
+														int len(0);
+														if (1 == EVP_DecryptUpdate(ctx, &(DecryptedData.rawbytes[0]), &len, ManufacturerData.data() + 8, ManufacturerData.size() - 8))
+														{
+															if (1 == EVP_DecryptFinal_ex(ctx, &(DecryptedData.rawbytes[0]) + len, &len))
+															{
+																ssOutput << std::dec;
+																if (ManufacturerData[4] == 0x01) // Solar Charger
+																{
+																	ssOutput << " battery_current:" << float(DecryptedData.SolarCharger.battery_current) * 0.01 << "V";
+																	ssOutput << " battery_voltage:" << float(DecryptedData.SolarCharger.battery_voltage) * 0.01 << "V";
+																	ssOutput << " load_current:" << float(DecryptedData.SolarCharger.load_current) * 0.01 << "V";
+																}
+																if (ManufacturerData[4] == 0x04) // DC/DC converter
+																{
+																	ssOutput << " input_voltage:" << float(DecryptedData.DCDCConverter.input_voltage) * 0.01 + 2.60 << "V";
+																	ssOutput << " output_voltage:" << float(DecryptedData.DCDCConverter.output_voltage) * 0.01 + 2.60 << "V";
+																}
+																if (ManufacturerData[4] == 0x05) // SmartLithium
+																{
+																	ssOutput << " cell_1:" << float(DecryptedData.SmartLithium.cell_1) * 0.01 + 2.60 << "V";
+																	ssOutput << " cell_2:" << float(DecryptedData.SmartLithium.cell_2) * 0.01 + 2.60 << "V";
+																	ssOutput << " cell_3:" << float(DecryptedData.SmartLithium.cell_3) * 0.01 + 2.60 << "V";
+																	ssOutput << " cell_4:" << float(DecryptedData.SmartLithium.cell_4) * 0.01 + 2.60 << "V";
+																	ssOutput << " cell_5:" << float(DecryptedData.SmartLithium.cell_5) * 0.01 + 2.60 << "V";
+																	ssOutput << " cell_6:" << float(DecryptedData.SmartLithium.cell_6) * 0.01 + 2.60 << "V";
+																	ssOutput << " cell_7:" << float(DecryptedData.SmartLithium.cell_7) * 0.01 + 2.60 << "V";
+																	ssOutput << " cell_8:" << float(DecryptedData.SmartLithium.cell_8) * 0.01 + 2.60 << "V";
+																	ssOutput << " battery_voltage:" << float(DecryptedData.SmartLithium.battery_voltage) * 0.01 << "V";
+																	ssOutput << " battery_temperature:" << DecryptedData.SmartLithium.battery_temperature - 40 << "\u00B0" << "C";
+																}
+															}
+														}
+													}
+													EVP_CIPHER_CTX_free(ctx);
+												}
+											}
+											ssOutput << std::endl;
+										}
 									}
 								}
 							}
