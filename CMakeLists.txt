@@ -41,7 +41,7 @@ if(NOT DBUS_FOUND)
   message(FATAL_ERROR "dbus-1 not found! sudo apt install libdbus-1-dev" )
 endif()
 
-pkg_check_modules(CRYPTO crypto)
+pkg_check_modules(CRYPTO libcrypto)
 if(NOT CRYPTO_FOUND)
   message(FATAL_ERROR "crypto not found! sudo apt install libssl-dev" )
 endif()
