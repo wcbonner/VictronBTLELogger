@@ -35,6 +35,7 @@
 #include <locale>
 #include <map>
 #include <openssl/evp.h> // sudo apt install libssl-dev
+#include <queue>
 #include <regex>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -53,6 +54,9 @@
 static const std::string ProgramVersionString("VictronBTLELogger Version " VictronBTLELogger_VERSION " Built on: " __DATE__ " at " __TIME__);
 
 int ConsoleVerbosity(1);
+std::filesystem::path LogDirectory;	// If this remains empty, log Files are not created.
+std::filesystem::path CacheDirectory;	// If this remains empty, cache Files are not used. Cache Files should greatly speed up startup of the program if logged data runs multiple years over many devices.
+std::filesystem::path SVGDirectory;	// If this remains empty, SVG Files are not created. If it's specified, _day, _week, _month, and _year.svg files are created for each bluetooth address seen.
 /////////////////////////////////////////////////////////////////////////////
 volatile bool bRun = true; // This is declared volatile so that the compiler won't optimized it out of loops later in the code
 void SignalHandlerSIGINT(int signal)
@@ -136,6 +140,82 @@ bdaddr_t string2ba(const std::string& TheBlueToothAddressString)
 	return(TheBlueToothAddress); 
 }
 /////////////////////////////////////////////////////////////////////////////
+bool ValidateDirectory(const std::filesystem::path& DirectoryName)
+{
+	bool rval = false;
+	// https://linux.die.net/man/2/stat
+	struct stat64 StatBuffer;
+	if (0 == stat64(DirectoryName.c_str(), &StatBuffer))
+		if (S_ISDIR(StatBuffer.st_mode))
+		{
+			// https://linux.die.net/man/2/access
+			if (0 == access(DirectoryName.c_str(), R_OK | W_OK))
+				rval = true;
+			else
+			{
+				switch (errno)
+				{
+				case EACCES:
+					std::cerr << DirectoryName << " (" << errno << ") The requested access would be denied to the file, or search permission is denied for one of the directories in the path prefix of pathname." << std::endl;
+					break;
+				case ELOOP:
+					std::cerr << DirectoryName << " (" << errno << ") Too many symbolic links were encountered in resolving pathname." << std::endl;
+					break;
+				case ENAMETOOLONG:
+					std::cerr << DirectoryName << " (" << errno << ") pathname is too long." << std::endl;
+					break;
+				case ENOENT:
+					std::cerr << DirectoryName << " (" << errno << ") A component of pathname does not exist or is a dangling symbolic link." << std::endl;
+					break;
+				case ENOTDIR:
+					std::cerr << DirectoryName << " (" << errno << ") A component used as a directory in pathname is not, in fact, a directory." << std::endl;
+					break;
+				case EROFS:
+					std::cerr << DirectoryName << " (" << errno << ") Write permission was requested for a file on a read-only file system." << std::endl;
+					break;
+				case EFAULT:
+					std::cerr << DirectoryName << " (" << errno << ") pathname points outside your accessible address space." << std::endl;
+					break;
+				case EINVAL:
+					std::cerr << DirectoryName << " (" << errno << ") mode was incorrectly specified." << std::endl;
+					break;
+				case EIO:
+					std::cerr << DirectoryName << " (" << errno << ") An I/O error occurred." << std::endl;
+					break;
+				case ENOMEM:
+					std::cerr << DirectoryName << " (" << errno << ") Insufficient kernel memory was available." << std::endl;
+					break;
+				case ETXTBSY:
+					std::cerr << DirectoryName << " (" << errno << ") Write access was requested to an executable which is being executed." << std::endl;
+					break;
+				default:
+					std::cerr << DirectoryName << " (" << errno << ") An unknown error." << std::endl;
+				}
+			}
+		}
+	return(rval);
+}
+// Create a standardized logfile name for this program based on a Bluetooth address and the global parameter of the log file directory.
+std::filesystem::path GenerateLogFileName(const bdaddr_t& a, time_t timer = 0)
+{
+	std::ostringstream OutputFilename;
+	OutputFilename << "victron-";
+	std::string btAddress(ba2string(a));
+	for (auto pos = btAddress.find(':'); pos != std::string::npos; pos = btAddress.find(':'))
+		btAddress.erase(pos, 1);
+	OutputFilename << btAddress;
+	if (timer == 0)
+		time(&timer);
+	struct tm UTC;
+	if (0 != gmtime_r(&timer, &UTC))
+		if (!((UTC.tm_year == 70) && (UTC.tm_mon == 0) && (UTC.tm_mday == 1)))
+			OutputFilename << "-" << std::dec << UTC.tm_year + 1900 << "-" << std::setw(2) << std::setfill('0') << UTC.tm_mon + 1;
+	OutputFilename << ".txt";
+	std::filesystem::path NewFormatFileName(LogDirectory / OutputFilename.str());
+	return(NewFormatFileName);
+}
+/////////////////////////////////////////////////////////////////////////////
+std::map<bdaddr_t, std::queue<std::string>> VictronVirtualLog;
 std::filesystem::path VictronEncryptionKeyFilename("victronencryptionkeys.txt");
 std::map<bdaddr_t, std::string> VictronEncryptionKeys;
 bool ReadVictronEncryptionKeys(const std::filesystem::path& VictronEncryptionKeysFilename)
@@ -518,6 +598,73 @@ bool bluez_discovery(DBusConnection* dbus_conn, const char* adapter_path, const 
 	return(bStarted);
 }
 /////////////////////////////////////////////////////////////////////////////
+class VictronSmartLithium
+{
+public:
+	time_t Time;
+	std::string WriteTXT(const char seperator = '\t') const;
+	std::string WriteCache(void) const;
+	std::string WriteConsole(void) const;
+	bool ReadCache(const std::string& data);
+protected:
+	unsigned int bms_flags;
+	unsigned int smartlithium_error;
+	unsigned int cell[8];
+	unsigned int battery_voltage;
+	unsigned int balancer_status;
+	unsigned int battery_temperature;
+};
+std::string VictronSmartLithium::WriteTXT(const char seperator) const
+{
+	std::ostringstream ssValue;
+	ssValue << timeToExcelDate(Time);
+	ssValue << seperator << std::setfill('0') << std::hex << std::setw(8) << bms_flags;
+	ssValue << seperator << std::setfill('0') << std::hex << std::setw(4) << smartlithium_error;
+	for (auto & a : cell)
+		ssValue << seperator << std::setfill('0') << std::hex << std::setw(2) << a;
+	ssValue << seperator << std::setfill('0') << std::hex << std::setw(4) << battery_voltage;
+	ssValue << seperator << std::setfill('0') << std::hex << std::setw(4) << balancer_status;
+	ssValue << seperator << std::setfill('0') << std::hex << std::setw(4) << battery_temperature;
+	return(ssValue.str());
+}
+std::string VictronSmartLithium::WriteCache(void) const
+{
+	std::ostringstream ssValue;
+	ssValue << timeToExcelDate(Time);
+	ssValue << "\t" << std::setfill('0') << std::hex << std::setw(8) << bms_flags;
+	ssValue << "\t" << std::setfill('0') << std::hex << std::setw(4) << smartlithium_error;
+	for (auto& a : cell)
+		ssValue << "\t" << std::setfill('0') << std::hex << std::setw(2) << a;
+	ssValue << "\t" << std::setfill('0') << std::hex << std::setw(4) << battery_voltage;
+	ssValue << "\t" << std::setfill('0') << std::hex << std::setw(4) << balancer_status;
+	ssValue << "\t" << std::setfill('0') << std::hex << std::setw(4) << battery_temperature;
+	return(ssValue.str());
+}
+std::string VictronSmartLithium::WriteConsole(void) const
+{
+	std::ostringstream ssValue;
+	for (auto& a : cell)
+		if (a != 0x7f)
+			ssValue << " Cell: " << float(a) * 0.01 + 2.60 << "V";
+	ssValue << " Battery: " << float(battery_voltage) * 0.01 << "V";
+	ssValue << " Temperature: " << battery_temperature - 40 << "\u00B0" << "C";
+	return(ssValue.str());
+}
+bool VictronSmartLithium::ReadCache(const std::string& data)
+{
+	bool rval = false;
+	std::istringstream ssValue(data);
+	ssValue >> Time;
+	ssValue >> bms_flags;
+	ssValue >> smartlithium_error;
+	for (auto& a : cell)
+		ssValue >> a;
+	ssValue >> battery_voltage;
+	ssValue >> balancer_status;
+	ssValue >> battery_temperature;
+	return(rval);
+}
+/////////////////////////////////////////////////////////////////////////////
 std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, bdaddr_t& dbusBTAddress)
 {
 	std::ostringstream ssOutput;
@@ -631,7 +778,7 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, bdaddr_t& dbusBTAdd
 													unsigned int yield_today : 16;
 													unsigned int pv_power : 16;
 													unsigned int load_current : 9;
-													unsigned int unused : 39;
+													//unsigned int unused : 39;
 												} SolarCharger;  // 0x01
 												struct __attribute__((packed))
 												{
@@ -640,7 +787,7 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, bdaddr_t& dbusBTAdd
 													unsigned int input_voltage : 16;
 													unsigned int output_voltage : 16;
 													unsigned int off_reason : 32;
-													unsigned int unused : 48;
+													//unsigned int unused : 48;
 												} DCDCConverter; // 0x04
 												struct __attribute__((packed))
 												{
@@ -657,7 +804,7 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, bdaddr_t& dbusBTAdd
 													unsigned int battery_voltage : 12;
 													unsigned int balancer_status : 4;
 													unsigned int battery_temperature : 7;
-													unsigned int unused : 1;
+													//unsigned int unused : 1;
 												} SmartLithium;  // 0x05
 											} DecryptedData({ 0 });
 											if (sizeof(DecryptedData) >= (ManufacturerData.size() - 8)) // simple check to make sure we don't buffer overflow
@@ -897,14 +1044,20 @@ static void usage(int argc, char** argv)
 	std::cout << "    -h | --help          Print this message" << std::endl;
 	std::cout << "    -v | --verbose level stdout verbosity level [" << ConsoleVerbosity << "]" << std::endl;
 	std::cout << "    -k | --keyfile filename [" << VictronEncryptionKeyFilename << "]" << std::endl;
+	std::cout << "    -l | --log name      Logging Directory [" << LogDirectory << "]" << std::endl;
+	std::cout << "    -f | --cache name    cache file directory [" << CacheDirectory << "]" << std::endl;
+	std::cout << "    -s | --svg name      SVG output directory [" << SVGDirectory << "]" << std::endl;
 	std::cout << "    -C | --controller XX:XX:XX:XX:XX:XX use the controller with this address" << std::endl;
 	std::cout << std::endl;
 }
-static const char short_options[] = "hv:k:C:";
+static const char short_options[] = "hv:k:l:f:s:C:";
 static const struct option long_options[] = {
 		{ "help",   no_argument,       NULL, 'h' },
 		{ "verbose",required_argument, NULL, 'v' },
 		{ "keyfile",required_argument, NULL, 'k' },
+		{ "log",    required_argument, NULL, 'l' },
+		{ "cache",	required_argument, NULL, 'f' },
+		{ "svg",	required_argument, NULL, 's' },
 		{ "controller", required_argument, NULL, 'C' },
 		{ 0, 0, 0, 0 }
 };
@@ -935,6 +1088,27 @@ int main(int argc, char** argv)
 			TempPath = std::string(optarg);
 			if (ReadVictronEncryptionKeys(TempPath))
 				VictronEncryptionKeyFilename = TempPath;
+			break;
+		case 'l':	// --log
+			TempPath = std::string(optarg);
+			while (TempPath.filename().empty() && (TempPath != TempPath.root_directory())) // This gets rid of the "/" on the end of the path
+				TempPath = TempPath.parent_path();
+			if (ValidateDirectory(TempPath))
+				LogDirectory = TempPath;
+			break;
+		case 'f':	// --cache
+			TempPath = std::string(optarg);
+			while (TempPath.filename().empty() && (TempPath != TempPath.root_directory())) // This gets rid of the "/" on the end of the path
+				TempPath = TempPath.parent_path();
+			if (ValidateDirectory(TempPath))
+				CacheDirectory = TempPath;
+			break;
+		case 's':	// --svg
+			TempPath = std::string(optarg);
+			while (TempPath.filename().empty() && (TempPath != TempPath.root_directory())) // This gets rid of the "/" on the end of the path
+				TempPath = TempPath.parent_path();
+			if (ValidateDirectory(TempPath))
+				SVGDirectory = TempPath;
 			break;
 		case 'C':	// --controller
 			ControllerAddress = std::string(optarg);
