@@ -260,6 +260,52 @@ bool ReadVictronEncryptionKeys(const std::filesystem::path& VictronEncryptionKey
 	}
 	return(rval);
 }
+bool GenerateLogFile(std::map<bdaddr_t, std::queue<std::string>>& AddressTemperatureMap)
+{
+	bool rval = false;
+	if (!LogDirectory.empty())
+	{
+		if (ConsoleVerbosity > 1)
+			std::cout << "[" << getTimeISO8601() << "] GenerateLogFile: " << LogDirectory << std::endl;
+		for (auto it = AddressTemperatureMap.begin(); it != AddressTemperatureMap.end(); ++it)
+		{
+			if (!it->second.empty()) // Only open the log file if there are entries to add
+			{
+				std::filesystem::path filename(GenerateLogFileName(it->first));
+				std::ofstream LogFile(filename, std::ios_base::out | std::ios_base::app | std::ios_base::ate);
+				if (LogFile.is_open())
+				{
+					//time_t MostRecentData(0);
+					while (!it->second.empty())
+					{
+						LogFile << it->second.front() << std::endl;
+						//MostRecentData = std::max(it->second.front().Time, MostRecentData);
+						it->second.pop();
+					}
+					LogFile.close();
+					//struct utimbuf Log_ut;
+					//Log_ut.actime = MostRecentData;
+					//Log_ut.modtime = MostRecentData;
+					//utime(filename.c_str(), &Log_ut);
+					rval = true;
+				}
+			}
+		}
+	}
+	else
+	{
+		// clear the queued data if LogDirectory not specified
+		for (auto it = AddressTemperatureMap.begin(); it != AddressTemperatureMap.end(); ++it)
+		{
+			while (!it->second.empty())
+			{
+				it->second.pop();
+			}
+		}
+	}
+	return(rval);
+}
+
 /////////////////////////////////////////////////////////////////////////////
 const char* dbus_message_iter_type_to_string(const int type)
 {
@@ -665,9 +711,11 @@ bool VictronSmartLithium::ReadCache(const std::string& data)
 	return(rval);
 }
 /////////////////////////////////////////////////////////////////////////////
-std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, bdaddr_t& dbusBTAddress)
+std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbusBTAddress)
 {
 	std::ostringstream ssOutput;
+	time_t TimeNow;
+	time(&TimeNow);
 	auto Device = VictronEncryptionKeys.find(dbusBTAddress);
 	if (Device != VictronEncryptionKeys.end())
 	do
@@ -688,7 +736,7 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, bdaddr_t& dbusBTAdd
 				if ((DBUS_TYPE_STRING == dbus_message_Type) || (DBUS_TYPE_OBJECT_PATH == dbus_message_Type))
 				{
 					dbus_message_iter_get_basic(&variant_iter, &value);
-					ssOutput << "[" << getTimeISO8601() << "] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << value.str << std::endl;
+					ssOutput << "[" << timeToISO8601(TimeNow, true) << "] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << value.str << std::endl;
 				}
 			}
 			else if (!Key.compare("UUIDs"))
@@ -740,7 +788,7 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, bdaddr_t& dbusBTAdd
 											}
 										} while (dbus_message_iter_next(&array4_iter));
 
-										ssOutput << "[" << getTimeISO8601(true) << "] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << std::setfill('0') << std::hex << std::setw(4) << ManufacturerID << ":";
+										ssOutput << "[" << timeToISO8601(TimeNow, true) << "] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << std::setfill('0') << std::hex << std::setw(4) << ManufacturerID << ":";
 										for (auto& Data : ManufacturerData)
 											ssOutput << std::setw(2) << int(Data);
 										if (ConsoleVerbosity > 4)
@@ -844,30 +892,46 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, bdaddr_t& dbusBTAdd
 														{
 															if (1 == EVP_DecryptFinal_ex(ctx, &(DecryptedData.rawbytes[0]) + len, &len))
 															{
-																ssOutput << std::dec;
-																if (ManufacturerData[4] == 0x01) // Solar Charger
+																// We have decrypted data!
+																std::ostringstream ssLogEntry;
+																ssLogEntry << timeToISO8601(TimeNow) << "\t";
+																for (auto index = 0; index < 7; index++)
+																	ssLogEntry << std::setfill('0') << std::hex << std::setw(2) << int(ManufacturerData[index]);
+																ssLogEntry << std::setfill('0') << std::hex << std::setw(2) << int(0); // I'm writing a zero here to remind myself I've decoded the data already
+																for (auto index = 0; index < ManufacturerData.size() - 8; index++)
+																	ssLogEntry << std::setfill('0') << std::hex << std::setw(2) << int(DecryptedData.rawbytes[index]);
+																std::queue<std::string> foo;
+																auto ret = VictronVirtualLog.insert(std::pair<bdaddr_t, std::queue<std::string>>(dbusBTAddress, foo)); // Either get the existing record or insert a new one
+																ret.first->second.push(ssLogEntry.str());	// puts the measurement in the queue to be written to the log file
+																//UpdateMRTGData(localBTAddress, localTemp);	// puts the measurement in the fake MRTG data structure
+																//GoveeLastDownload.insert(std::pair<bdaddr_t, time_t>(localBTAddress, 0));	// Makes sure the Bluetooth Address is in the list to get downloaded historical data
+																if (ConsoleVerbosity > 0)
 																{
-																	ssOutput << " battery_current:" << float(DecryptedData.SolarCharger.battery_current) * 0.01 << "V";
-																	ssOutput << " battery_voltage:" << float(DecryptedData.SolarCharger.battery_voltage) * 0.01 << "V";
-																	ssOutput << " load_current:" << float(DecryptedData.SolarCharger.load_current) * 0.01 << "V";
-																}
-																if (ManufacturerData[4] == 0x04) // DC/DC converter
-																{
-																	ssOutput << " input_voltage:" << float(DecryptedData.DCDCConverter.input_voltage) * 0.01 + 2.60 << "V";
-																	ssOutput << " output_voltage:" << float(DecryptedData.DCDCConverter.output_voltage) * 0.01 + 2.60 << "V";
-																}
-																if (ManufacturerData[4] == 0x05) // SmartLithium
-																{
-																	ssOutput << " cell_1:" << float(DecryptedData.SmartLithium.cell_1) * 0.01 + 2.60 << "V";
-																	ssOutput << " cell_2:" << float(DecryptedData.SmartLithium.cell_2) * 0.01 + 2.60 << "V";
-																	ssOutput << " cell_3:" << float(DecryptedData.SmartLithium.cell_3) * 0.01 + 2.60 << "V";
-																	ssOutput << " cell_4:" << float(DecryptedData.SmartLithium.cell_4) * 0.01 + 2.60 << "V";
-																	ssOutput << " cell_5:" << float(DecryptedData.SmartLithium.cell_5) * 0.01 + 2.60 << "V";
-																	ssOutput << " cell_6:" << float(DecryptedData.SmartLithium.cell_6) * 0.01 + 2.60 << "V";
-																	ssOutput << " cell_7:" << float(DecryptedData.SmartLithium.cell_7) * 0.01 + 2.60 << "V";
-																	ssOutput << " cell_8:" << float(DecryptedData.SmartLithium.cell_8) * 0.01 + 2.60 << "V";
-																	ssOutput << " battery_voltage:" << float(DecryptedData.SmartLithium.battery_voltage) * 0.01 << "V";
-																	ssOutput << " battery_temperature:" << DecryptedData.SmartLithium.battery_temperature - 40 << "\u00B0" << "C";
+																	ssOutput << std::dec;
+																	if (ManufacturerData[4] == 0x01) // Solar Charger
+																	{
+																		ssOutput << " battery_current:" << float(DecryptedData.SolarCharger.battery_current) * 0.01 << "V";
+																		ssOutput << " battery_voltage:" << float(DecryptedData.SolarCharger.battery_voltage) * 0.01 << "V";
+																		ssOutput << " load_current:" << float(DecryptedData.SolarCharger.load_current) * 0.01 << "V";
+																	}
+																	if (ManufacturerData[4] == 0x04) // DC/DC converter
+																	{
+																		ssOutput << " input_voltage:" << float(DecryptedData.DCDCConverter.input_voltage) * 0.01 + 2.60 << "V";
+																		ssOutput << " output_voltage:" << float(DecryptedData.DCDCConverter.output_voltage) * 0.01 + 2.60 << "V";
+																	}
+																	if (ManufacturerData[4] == 0x05) // SmartLithium
+																	{
+																		ssOutput << " cell_1:" << float(DecryptedData.SmartLithium.cell_1) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_2:" << float(DecryptedData.SmartLithium.cell_2) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_3:" << float(DecryptedData.SmartLithium.cell_3) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_4:" << float(DecryptedData.SmartLithium.cell_4) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_5:" << float(DecryptedData.SmartLithium.cell_5) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_6:" << float(DecryptedData.SmartLithium.cell_6) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_7:" << float(DecryptedData.SmartLithium.cell_7) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_8:" << float(DecryptedData.SmartLithium.cell_8) * 0.01 + 2.60 << "V";
+																		ssOutput << " battery_voltage:" << float(DecryptedData.SmartLithium.battery_voltage) * 0.01 << "V";
+																		ssOutput << " battery_temperature:" << DecryptedData.SmartLithium.battery_temperature - 40 << "\u00B0" << "C";
+																	}
 																}
 															}
 														}
@@ -1227,22 +1291,23 @@ int main(int argc, char** argv)
 					//	TimeSVG = (TimeNow / DAY_SAMPLE) * DAY_SAMPLE; // hack to try to line up TimeSVG to be on a five minute period
 					//	WriteAllSVG();
 					//}
-					//if (difftime(TimeNow, TimeStart) > LogFileTime)
-					//{
-					//	if (ConsoleVerbosity > 0)
-					//		std::cout << "[" << getTimeISO8601() << "] " << std::dec << LogFileTime << " seconds or more have passed. Writing LOG Files" << std::endl;
-					//	TimeStart = TimeNow;
-					//	GenerateLogFile(GoveeTemperatures, GoveeLastDownload);
-					//	GenerateCacheFile(GoveeMRTGLogs); // flush FakeMRTG data to cache files
-					//	MonitorLoggedData();
-					//}
+					const int LogFileTime(60);
+					if (difftime(TimeNow, TimeStart) > LogFileTime)
+					{
+						if (ConsoleVerbosity > 0)
+							std::cout << "[" << getTimeISO8601(true) << "] " << std::dec << LogFileTime << " seconds or more have passed. Writing LOG Files" << std::endl;
+						TimeStart = TimeNow;
+						GenerateLogFile(VictronVirtualLog);
+						//GenerateCacheFile(GoveeMRTGLogs); // flush FakeMRTG data to cache files
+						//MonitorLoggedData();
+					}
 				}
 				bluez_discovery(dbus_conn, BlueZAdapter.c_str(), false);
 
 				std::signal(SIGHUP, previousHandlerSIGHUP);	// Restore original Hangup signal handler
 				std::signal(SIGINT, previousHandlerSIGINT);	// Restore original Ctrl-C signal handler
 
-				//GenerateLogFile(GoveeTemperatures, GoveeLastDownload); // flush contents of accumulated map to logfiles
+				GenerateLogFile(VictronVirtualLog);	// flush contents of accumulated map to logfiles
 				//GenerateCacheFile(GoveeMRTGLogs); // flush FakeMRTG data to cache files
 			}
 			bluez_filter_le(dbus_conn, BlueZAdapter.c_str(), false, false); // remove discovery filter
