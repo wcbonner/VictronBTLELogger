@@ -696,6 +696,17 @@ union VictronExtraData_t {
 		unsigned int temperature : 7;
 		//unsigned int unused : 1;
 	} LynxSmartBMS; // 0x0a
+	struct __attribute__((packed))
+	{
+		unsigned int device_state : 8;
+		unsigned int charger_error : 8;
+		unsigned int output_voltage : 16;
+		unsigned int output_current : 16;
+		unsigned int input_voltage : 16;
+		unsigned int input_current : 16;
+		unsigned int off_reason : 32;
+		//unsigned int unused : 16;
+	} OrionXS; // 0x0F
 };
 
 class VictronSmartLithium
@@ -904,7 +915,7 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 															if (1 == EVP_DecryptFinal_ex(ctx, DecryptedData + len, &len))
 															{
 																// We have decrypted data!
-																ManufacturerData[7] = 0; // I'm writing a zero here to remind myself I've decoded the data already
+																ManufacturerData[5] = ManufacturerData[6] = ManufacturerData[7] = 0; // I'm writing a zero here to remind myself I've decoded the data already
 																for (auto index = 0; index < ManufacturerData.size() - 8; index++) // copy the decoded data over the original data
 																	ManufacturerData[index+8] = DecryptedData[index];
 																std::ostringstream ssLogEntry;
@@ -922,17 +933,20 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 																	ssOutput << std::dec;
 																	if (ManufacturerData[4] == 0x01) // Solar Charger
 																	{
+																		ssOutput << " (Solar)";
 																		ssOutput << " battery_current:" << float(ExtraDataPtr->SolarCharger.battery_current) * 0.01 << "V";
 																		ssOutput << " battery_voltage:" << float(ExtraDataPtr->SolarCharger.battery_voltage) * 0.01 << "V";
 																		ssOutput << " load_current:" << float(ExtraDataPtr->SolarCharger.load_current) * 0.01 << "V";
 																	}
 																	if (ManufacturerData[4] == 0x04) // DC/DC converter
 																	{
+																		ssOutput << " (DC/DC)";
 																		ssOutput << " input_voltage:" << float(ExtraDataPtr->DCDCConverter.input_voltage) * 0.01 + 2.60 << "V";
 																		ssOutput << " output_voltage:" << float(ExtraDataPtr->DCDCConverter.output_voltage) * 0.01 + 2.60 << "V";
 																	}
 																	if (ManufacturerData[4] == 0x05) // SmartLithium
 																	{
+																		ssOutput << " (SmartLithium)";
 																		ssOutput << " cell_1:" << float(ExtraDataPtr->SmartLithium.cell_1) * 0.01 + 2.60 << "V";
 																		ssOutput << " cell_2:" << float(ExtraDataPtr->SmartLithium.cell_2) * 0.01 + 2.60 << "V";
 																		ssOutput << " cell_3:" << float(ExtraDataPtr->SmartLithium.cell_3) * 0.01 + 2.60 << "V";
@@ -943,6 +957,14 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 																		ssOutput << " cell_8:" << float(ExtraDataPtr->SmartLithium.cell_8) * 0.01 + 2.60 << "V";
 																		ssOutput << " battery_voltage:" << float(ExtraDataPtr->SmartLithium.battery_voltage) * 0.01 << "V";
 																		ssOutput << " battery_temperature:" << ExtraDataPtr->SmartLithium.battery_temperature - 40 << "\u00B0" << "C";
+																	}
+																	if (ManufacturerData[4] == 0x0f) // Orion XS DC/DC converter
+																	{
+																		ssOutput << " (Orion XS)";
+																		ssOutput << " output_voltage:" << float(ExtraDataPtr->OrionXS.output_voltage) * 0.01 << "V";
+																		ssOutput << " output_current:" << float(ExtraDataPtr->OrionXS.output_current) * 0.01 << "A";
+																		ssOutput << " input_voltage:" << float(ExtraDataPtr->OrionXS.input_voltage) * 0.01 << "V";
+																		ssOutput << " input_current:" << float(ExtraDataPtr->OrionXS.input_current) * 0.01 << "A";
 																	}
 																}
 															}
