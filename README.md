@@ -80,6 +80,20 @@ Decoding the extra manufacturer data, it's all manufacturer data at the bluetoot
 0x7E (126) when cell voltage > 3.85
 0x7F (127) when cell voltage is not available / unknown
 
+### (Lynx Smart) BMS (0x0A)
+| Start Bit | Nr of Bits | Meaning | Units | Range | NA Value | Remark |
+| --- | --- | --- | --- | --- | --- | --- |
+| 32 | 8 | Error | 0x0 | VE_REG_BMS_ERROR
+| 40 | 16 | TTG | 1min | 0..45.5 days | 0xFFFF | VE_REG_TTG |
+| 56 | 16 | Battery voltage | 0.01V | -327.68..327.66 V | 0x7FFF | VE_REG_DC_CHANNEL1_VOLTAGE |
+| 72 | 16 | Battery current | 0.1A | -3276.8..3276.6 | 0x7FFF | VE_REG_DC_CHANNEL1_CURRENT |
+| 88 | 16 | IO status | | | 0x0 |  VE_REG_BMS_IO |
+| 104 | 18 | Warnings/Alarms | | | 0x0 | VE_REG_BMS_WARNINGS_ALARMS |
+| 122 | 10 | SOC | 0.1% | 0..100.0% | 0x3FF | VE_REG_SOC |
+| 132 | 20 | Consumed Ah | 0.1 Ah | -104,857..0 Ah | 0xFFFFF | VE_REG_CAH Consumed Ah = -Record value |
+| 152 | 7 | Temperature | °C | -40..86 °C | 0x7F | VE_REG_BAT_TEMPERATURE Temperature = Record value - 40 |
+| 159 | 1 | Unused |
+
 ### Orion XS (0x0F)
 | Start Bit | Nr of Bits | Meaning | Units | Range | NA Value | Remark |
 | --- | --- | --- | --- | --- | --- | --- |
