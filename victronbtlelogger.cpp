@@ -644,6 +644,60 @@ bool bluez_discovery(DBusConnection* dbus_conn, const char* adapter_path, const 
 	return(bStarted);
 }
 /////////////////////////////////////////////////////////////////////////////
+union VictronExtraData_t {
+	uint8_t rawbytes[20];
+	struct __attribute__((packed))
+	{
+		unsigned int device_state : 8;
+		unsigned int charger_error : 8;
+		int battery_voltage : 16;
+		int battery_current : 16;
+		unsigned int yield_today : 16;
+		unsigned int pv_power : 16;
+		unsigned int load_current : 9;
+		//unsigned int unused : 39;
+	} SolarCharger;  // 0x01
+	struct __attribute__((packed))
+	{
+		unsigned int device_state : 8;
+		unsigned int charger_error : 8;
+		unsigned int input_voltage : 16;
+		unsigned int output_voltage : 16;
+		unsigned int off_reason : 32;
+		//unsigned int unused : 48;
+	} DCDCConverter; // 0x04
+	struct __attribute__((packed))
+	{
+		unsigned int bms_flags : 32;
+		unsigned int smartlithium_error : 16;
+		unsigned int cell_1 : 7;
+		unsigned int cell_2 : 7;
+		unsigned int cell_3 : 7;
+		unsigned int cell_4 : 7;
+		unsigned int cell_5 : 7;
+		unsigned int cell_6 : 7;
+		unsigned int cell_7 : 7;
+		unsigned int cell_8 : 7;
+		unsigned int battery_voltage : 12;
+		unsigned int balancer_status : 4;
+		unsigned int battery_temperature : 7;
+		//unsigned int unused : 1;
+	} SmartLithium;  // 0x05
+	struct __attribute__((packed))
+	{
+		unsigned int error : 8;
+		unsigned int ttg : 16;
+		unsigned int battery_voltage : 16;
+		unsigned int battery_current : 16;
+		unsigned int io_status : 16;
+		unsigned int warnings : 18;
+		unsigned int soc : 10;
+		unsigned int consumed_ah : 20;
+		unsigned int temperature : 7;
+		//unsigned int unused : 1;
+	} LynxSmartBMS; // 0x0a
+};
+
 class VictronSmartLithium
 {
 public:
@@ -815,46 +869,7 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 										}
 										if (ManufacturerData[7] == EncryptionKey[0]) // if stored key doesnt start with this data, we need to update stored key
 										{
-											union {
-												uint8_t rawbytes[32];
-												struct __attribute__((packed))
-												{
-													unsigned int device_state : 8;
-													unsigned int charger_error : 8;
-													int battery_voltage : 16;
-													int battery_current : 16;
-													unsigned int yield_today : 16;
-													unsigned int pv_power : 16;
-													unsigned int load_current : 9;
-													//unsigned int unused : 39;
-												} SolarCharger;  // 0x01
-												struct __attribute__((packed))
-												{
-													unsigned int device_state : 8;
-													unsigned int charger_error : 8;
-													unsigned int input_voltage : 16;
-													unsigned int output_voltage : 16;
-													unsigned int off_reason : 32;
-													//unsigned int unused : 48;
-												} DCDCConverter; // 0x04
-												struct __attribute__((packed))
-												{
-													unsigned int bms_flags : 32;
-													unsigned int smartlithium_error : 16;
-													unsigned int cell_1 : 7;
-													unsigned int cell_2 : 7;
-													unsigned int cell_3 : 7;
-													unsigned int cell_4 : 7;
-													unsigned int cell_5 : 7;
-													unsigned int cell_6 : 7;
-													unsigned int cell_7 : 7;
-													unsigned int cell_8 : 7;
-													unsigned int battery_voltage : 12;
-													unsigned int balancer_status : 4;
-													unsigned int battery_temperature : 7;
-													//unsigned int unused : 1;
-												} SmartLithium;  // 0x05
-											} DecryptedData({ 0 });
+											uint8_t DecryptedData[32]({ 0 });
 											if (sizeof(DecryptedData) >= (ManufacturerData.size() - 8)) // simple check to make sure we don't buffer overflow
 											{
 												//[2024-09-04T04:47:30] [CE:A5:D7:7B:CD:81] Name: S/V Sola Batt 1
@@ -879,27 +894,23 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 												EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
 												if (ctx != 0)
 												{
-													std::vector<uint8_t> InitializationVector;
-													InitializationVector.push_back(ManufacturerData[5]);
-													InitializationVector.push_back(ManufacturerData[6]);
-													while (InitializationVector.size() < 16)
-														InitializationVector.push_back(0);
+													uint8_t InitializationVector[16]({ ManufacturerData[5], ManufacturerData[6], 0}); // The first two bytes are assigned, the rest of the 16 are padded with zero
 
-													if (1 == EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, EncryptionKey.data(), InitializationVector.data()))
+													if (1 == EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, EncryptionKey.data(), InitializationVector))
 													{
 														int len(0);
-														if (1 == EVP_DecryptUpdate(ctx, &(DecryptedData.rawbytes[0]), &len, ManufacturerData.data() + 8, ManufacturerData.size() - 8))
+														if (1 == EVP_DecryptUpdate(ctx, DecryptedData, &len, ManufacturerData.data() + 8, ManufacturerData.size() - 8))
 														{
-															if (1 == EVP_DecryptFinal_ex(ctx, &(DecryptedData.rawbytes[0]) + len, &len))
+															if (1 == EVP_DecryptFinal_ex(ctx, DecryptedData + len, &len))
 															{
 																// We have decrypted data!
+																ManufacturerData[7] = 0; // I'm writing a zero here to remind myself I've decoded the data already
+																for (auto index = 0; index < ManufacturerData.size() - 8; index++) // copy the decoded data over the original data
+																	ManufacturerData[index+8] = DecryptedData[index];
 																std::ostringstream ssLogEntry;
 																ssLogEntry << timeToISO8601(TimeNow) << "\t";
-																for (auto index = 0; index < 7; index++)
-																	ssLogEntry << std::setfill('0') << std::hex << std::setw(2) << int(ManufacturerData[index]);
-																ssLogEntry << std::setfill('0') << std::hex << std::setw(2) << int(0); // I'm writing a zero here to remind myself I've decoded the data already
-																for (auto index = 0; index < ManufacturerData.size() - 8; index++)
-																	ssLogEntry << std::setfill('0') << std::hex << std::setw(2) << int(DecryptedData.rawbytes[index]);
+																for (auto &a : ManufacturerData)
+																	ssLogEntry << std::setfill('0') << std::hex << std::setw(2) << int(a);
 																std::queue<std::string> foo;
 																auto ret = VictronVirtualLog.insert(std::pair<bdaddr_t, std::queue<std::string>>(dbusBTAddress, foo)); // Either get the existing record or insert a new one
 																ret.first->second.push(ssLogEntry.str());	// puts the measurement in the queue to be written to the log file
@@ -907,30 +918,31 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 																//GoveeLastDownload.insert(std::pair<bdaddr_t, time_t>(localBTAddress, 0));	// Makes sure the Bluetooth Address is in the list to get downloaded historical data
 																if (ConsoleVerbosity > 0)
 																{
+																	VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data()+8);
 																	ssOutput << std::dec;
 																	if (ManufacturerData[4] == 0x01) // Solar Charger
 																	{
-																		ssOutput << " battery_current:" << float(DecryptedData.SolarCharger.battery_current) * 0.01 << "V";
-																		ssOutput << " battery_voltage:" << float(DecryptedData.SolarCharger.battery_voltage) * 0.01 << "V";
-																		ssOutput << " load_current:" << float(DecryptedData.SolarCharger.load_current) * 0.01 << "V";
+																		ssOutput << " battery_current:" << float(ExtraDataPtr->SolarCharger.battery_current) * 0.01 << "V";
+																		ssOutput << " battery_voltage:" << float(ExtraDataPtr->SolarCharger.battery_voltage) * 0.01 << "V";
+																		ssOutput << " load_current:" << float(ExtraDataPtr->SolarCharger.load_current) * 0.01 << "V";
 																	}
 																	if (ManufacturerData[4] == 0x04) // DC/DC converter
 																	{
-																		ssOutput << " input_voltage:" << float(DecryptedData.DCDCConverter.input_voltage) * 0.01 + 2.60 << "V";
-																		ssOutput << " output_voltage:" << float(DecryptedData.DCDCConverter.output_voltage) * 0.01 + 2.60 << "V";
+																		ssOutput << " input_voltage:" << float(ExtraDataPtr->DCDCConverter.input_voltage) * 0.01 + 2.60 << "V";
+																		ssOutput << " output_voltage:" << float(ExtraDataPtr->DCDCConverter.output_voltage) * 0.01 + 2.60 << "V";
 																	}
 																	if (ManufacturerData[4] == 0x05) // SmartLithium
 																	{
-																		ssOutput << " cell_1:" << float(DecryptedData.SmartLithium.cell_1) * 0.01 + 2.60 << "V";
-																		ssOutput << " cell_2:" << float(DecryptedData.SmartLithium.cell_2) * 0.01 + 2.60 << "V";
-																		ssOutput << " cell_3:" << float(DecryptedData.SmartLithium.cell_3) * 0.01 + 2.60 << "V";
-																		ssOutput << " cell_4:" << float(DecryptedData.SmartLithium.cell_4) * 0.01 + 2.60 << "V";
-																		ssOutput << " cell_5:" << float(DecryptedData.SmartLithium.cell_5) * 0.01 + 2.60 << "V";
-																		ssOutput << " cell_6:" << float(DecryptedData.SmartLithium.cell_6) * 0.01 + 2.60 << "V";
-																		ssOutput << " cell_7:" << float(DecryptedData.SmartLithium.cell_7) * 0.01 + 2.60 << "V";
-																		ssOutput << " cell_8:" << float(DecryptedData.SmartLithium.cell_8) * 0.01 + 2.60 << "V";
-																		ssOutput << " battery_voltage:" << float(DecryptedData.SmartLithium.battery_voltage) * 0.01 << "V";
-																		ssOutput << " battery_temperature:" << DecryptedData.SmartLithium.battery_temperature - 40 << "\u00B0" << "C";
+																		ssOutput << " cell_1:" << float(ExtraDataPtr->SmartLithium.cell_1) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_2:" << float(ExtraDataPtr->SmartLithium.cell_2) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_3:" << float(ExtraDataPtr->SmartLithium.cell_3) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_4:" << float(ExtraDataPtr->SmartLithium.cell_4) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_5:" << float(ExtraDataPtr->SmartLithium.cell_5) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_6:" << float(ExtraDataPtr->SmartLithium.cell_6) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_7:" << float(ExtraDataPtr->SmartLithium.cell_7) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_8:" << float(ExtraDataPtr->SmartLithium.cell_8) * 0.01 + 2.60 << "V";
+																		ssOutput << " battery_voltage:" << float(ExtraDataPtr->SmartLithium.battery_voltage) * 0.01 << "V";
+																		ssOutput << " battery_temperature:" << ExtraDataPtr->SmartLithium.battery_temperature - 40 << "\u00B0" << "C";
 																	}
 																}
 															}
