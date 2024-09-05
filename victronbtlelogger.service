@@ -15,6 +15,7 @@ ExecStartPre=/bin/mkdir --parents /var/www/html/victronbtlelogger
 ExecStartPre=/bin/mkdir --parents /var/cache/victronbtlelogger
 ExecStart=/usr/local/bin/victronbtlelogger \
     --verbose 0 \
+    --key /etc/victronbtlelogger/victronencryptionkeys.txt
     --log /var/log/victronbtlelogger \
     --time 60 \
     --svg /var/www/html/victronbtlelogger \
