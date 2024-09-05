@@ -26,7 +26,7 @@ Decoding the extra manufacturer data, it's all manufacturer data at the bluetoot
 | 0 | 1 | Manufacturer Data Record type 0x10 | --- |
 | 1 | 2 | model id | --- |
 | 3 | 1 | read out type 0xA0 | --- |
-| 4 | 1 | record type | --- |
+| 4 | 1 | record type | Used to decide which bit packed structure to decode the extra data. e.g. 0x01=[Solar Charger](#solar-charger-0x01) 0x05=[SmartLithium](#smartlithium-0x05)|
 | 5 | 2 | AES Initialization Vector | --- |
 | 7 | 1 | First Byte of AES Decryption Key | --- |
 | 8 | ? | First Byte of encrypted data | extra manufacturer data |
