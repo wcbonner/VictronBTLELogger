@@ -1,5 +1,9 @@
 # VictronBTLELogger
 
+The purpose of this program is to listen to Victron Bluetooth LE advertisments, decrypt and log them, and create SVG graphs of the battery voltage and temperature in the style of https://github.com/wcbonner/GoveeBTTempLogger
+
+## Useful starting links
+
 https://community.victronenergy.com/questions/187303/victron-bluetooth-advertising-protocol.html
 
 https://www.victronenergy.com/live/open_source:start
@@ -48,7 +52,7 @@ Decoding the extra manufacturer data, it's all manufacturer data at the bluetoot
 | 40 | 8 | Charger Error | | 0..0xFE | 0xFF | VE_REG_CHR_ERROR_CODE |
 | 48 | 16 | Input voltage | 0.01V | 0..655.34 V | 0xFFFF | VE_REG_DC_INPUT_VOLTAGE |
 | 64 | 16 | Output voltage | 0.01V | -327.68..327.66V | 0x7FFF | VE_REG_DC_CHANNEL1_VOLTAGE |
-| 80 | 32 | Off reason | | 0..0xFFFFFFFF | - | VE_REG_DEVICE_OFF_REASON_2 |
+| 80 | 32 | Off reason | | 0..0xFFFFFFFF | | VE_REG_DEVICE_OFF_REASON_2 |
 | 112 | 48 | Unused |
 
 ### SmartLithium (0x05)
@@ -65,9 +69,16 @@ Decoding the extra manufacturer data, it's all manufacturer data at the bluetoot
 | 122 | 7 | Cell 7 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
 | 129 | 7 | Cell 8 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
 | 136 | 12 | Battery voltage | 0.01V | 0..40.94 V | 0x0FFF | VE_REG_DC_CHANNEL1_VOLTAGE |
-| 148 | 4 | Balancer status | 0..15 | 0x0F | | VE_REG_BALANCER_STATUS |
-| 152 | 7 | Battery temperature | 1°C | -40..86 °C | 0x7F | VE_REG_BAT_TEMPERATURE Temperature = Record value - 40 |
+| 148 | 4 | Balancer status | | 0..15 | 0x0F | VE_REG_BALANCER_STATUS |
+| 152 | 7 | Battery temperature | 1Â°C | -40..86 Â°C | 0x7F | VE_REG_BAT_TEMPERATURE Temperature = Record value - 40 |
 | 159 | 1 | Unused |
+
+* VE_REG_BATTERY_CELL_VOLTAGE
+0x00 ( 0) when cell voltage < 2.61V
+0x01 ( 1) when cell voltage == 2.61V
+0x7D (125) when cell voltage == 3.85V
+0x7E (126) when cell voltage > 3.85
+0x7F (127) when cell voltage is not available / unknown
 
 ### Orion XS (0x0F)
 | Start Bit | Nr of Bits | Meaning | Units | Range | NA Value | Remark |
