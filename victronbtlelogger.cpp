@@ -869,7 +869,7 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 										}
 										if (ManufacturerData[7] == EncryptionKey[0]) // if stored key doesnt start with this data, we need to update stored key
 										{
-											uint8_t DecryptedData[32]({ 0 });
+											uint8_t DecryptedData[32] { 0 };
 											if (sizeof(DecryptedData) >= (ManufacturerData.size() - 8)) // simple check to make sure we don't buffer overflow
 											{
 												//[2024-09-04T04:47:30] [CE:A5:D7:7B:CD:81] Name: S/V Sola Batt 1
@@ -894,7 +894,7 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 												EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
 												if (ctx != 0)
 												{
-													uint8_t InitializationVector[16]({ ManufacturerData[5], ManufacturerData[6], 0}); // The first two bytes are assigned, the rest of the 16 are padded with zero
+													uint8_t InitializationVector[16] { ManufacturerData[5], ManufacturerData[6], 0}; // The first two bytes are assigned, the rest of the 16 are padded with zero
 
 													if (1 == EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, EncryptionKey.data(), InitializationVector))
 													{
