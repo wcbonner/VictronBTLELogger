@@ -1707,6 +1707,9 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 																ret.first->second.push(ssLogEntry.str());	// puts the measurement in the queue to be written to the log file
 																//UpdateMRTGData(localBTAddress, localTemp);	// puts the measurement in the fake MRTG data structure
 																//GoveeLastDownload.insert(std::pair<bdaddr_t, time_t>(localBTAddress, 0));	// Makes sure the Bluetooth Address is in the list to get downloaded historical data
+																VictronSmartLithium localLithium;
+																if (localLithium.ReadManufacturerData(ManufacturerData))
+																	UpdateMRTGData(dbusBTAddress, localLithium);	// puts the measurement in the fake MRTG data structure
 																if (ConsoleVerbosity > 0)
 																{
 																	VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data()+8);
@@ -1726,12 +1729,8 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 																	}
 																	if (ManufacturerData[4] == 0x05) // SmartLithium
 																	{
-																		VictronSmartLithium localLithium;
-																		if (localLithium.ReadManufacturerData(ManufacturerData))
-																		{
+																		if (localLithium.IsValid())
 																			ssOutput << localLithium.WriteConsole();
-																			UpdateMRTGData(dbusBTAddress, localLithium);	// puts the measurement in the fake MRTG data structure
-																		}
 																		else
 																		{
 																			ssOutput << " (SmartLithium)";
