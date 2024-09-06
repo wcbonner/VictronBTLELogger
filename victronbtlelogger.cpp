@@ -1445,6 +1445,117 @@ void ReadLoggedData(void)
 	}
 }
 /////////////////////////////////////////////////////////////////////////////
+std::filesystem::path GenerateCacheFileName(const bdaddr_t& a)
+{
+	std::string btAddress(ba2string(a));
+	for (auto pos = btAddress.find(':'); pos != std::string::npos; pos = btAddress.find(':'))
+		btAddress.erase(pos, 1);
+	std::ostringstream OutputFilename;
+	OutputFilename << "victron-";
+	OutputFilename << btAddress;
+	OutputFilename << "-cache.txt";
+	std::filesystem::path CacheFileName(CacheDirectory / OutputFilename.str());
+	return(CacheFileName);
+}
+bool GenerateCacheFile(const bdaddr_t& a, const std::vector<VictronSmartLithium>& MRTGLog)
+{
+	bool rval(false);
+	if (!MRTGLog.empty())
+	{
+		std::filesystem::path MRTGCacheFile(GenerateCacheFileName(a));
+		struct stat64 Stat({ 0 });	// Zero the stat64 structure when it's allocated
+		stat64(MRTGCacheFile.c_str(), &Stat);	// This shouldn't change Stat if the file doesn't exist.
+		if (difftime(MRTGLog[0].Time, Stat.st_mtim.tv_sec) > 60 * 60) // If Cache File has data older than 60 minutes, write it
+		{
+			std::ofstream CacheFile(MRTGCacheFile, std::ios_base::out | std::ios_base::trunc);
+			if (CacheFile.is_open())
+			{
+				if (ConsoleVerbosity > 0)
+					std::cout << "[" << getTimeISO8601(true) << "] Writing: " << MRTGCacheFile.string() << std::endl;
+				else
+					std::cerr << "Writing: " << MRTGCacheFile.string() << std::endl;
+				CacheFile << "Cache: " << ba2string(a) << " " << ProgramVersionString << std::endl;
+				for (auto i : MRTGLog)
+					CacheFile << i.WriteCache() << std::endl;
+				CacheFile.close();
+				struct utimbuf ut;
+				ut.actime = MRTGLog[0].Time;
+				ut.modtime = MRTGLog[0].Time;
+				utime(MRTGCacheFile.c_str(), &ut);
+				rval = true;
+			}
+		}
+	}
+	return(rval);
+}
+void GenerateCacheFile(std::map<bdaddr_t, std::vector<VictronSmartLithium>>& MRTGLogMap)
+{
+	if (!CacheDirectory.empty())
+	{
+		if (ConsoleVerbosity > 1)
+			std::cout << "[" << getTimeISO8601() << "] GenerateCacheFile: " << CacheDirectory << std::endl;
+		for (auto it = MRTGLogMap.begin(); it != MRTGLogMap.end(); ++it)
+			GenerateCacheFile(it->first, it->second);
+	}
+}
+void ReadCacheDirectory(void)
+{
+	const std::regex CacheFileRegex("^victron-[[:xdigit:]]{12}-cache.txt");
+	if (!CacheDirectory.empty())
+	{
+		if (ConsoleVerbosity > 1)
+			std::cout << "[" << getTimeISO8601() << "] ReadCacheDirectory: " << CacheDirectory << std::endl;
+		std::deque<std::filesystem::path> files;
+		for (auto const& dir_entry : std::filesystem::directory_iterator{ CacheDirectory })
+			if (dir_entry.is_regular_file())
+				if (std::regex_match(dir_entry.path().filename().string(), CacheFileRegex))
+					files.push_back(dir_entry);
+		if (!files.empty())
+		{
+			sort(files.begin(), files.end());
+			while (!files.empty())
+			{
+				std::ifstream TheFile(*files.begin());
+				if (TheFile.is_open())
+				{
+					if (ConsoleVerbosity > 0)
+						std::cout << "[" << getTimeISO8601(true) << "] Reading: " << files.begin()->string() << std::endl;
+					else
+						std::cerr << "Reading: " << files.begin()->string() << std::endl;
+					std::string TheLine;
+					if (std::getline(TheFile, TheLine))
+					{
+						const std::regex CacheFirstLineRegex("^Cache: ((([[:xdigit:]]{2}:){5}))[[:xdigit:]]{2}.*");
+						// every Cache File should have a start line with the name Cache, the Bluetooth Address, and the creator version. 
+						// TODO: check to make sure the version is compatible
+						if (std::regex_match(TheLine, CacheFirstLineRegex))
+						{
+							const std::regex BluetoothAddressRegex("((([[:xdigit:]]{2}:){5}))[[:xdigit:]]{2}");
+							std::smatch BluetoothAddress;
+							if (std::regex_search(TheLine, BluetoothAddress, BluetoothAddressRegex))
+							{
+								bdaddr_t TheBlueToothAddress(string2ba(BluetoothAddress.str()));
+								std::vector<VictronSmartLithium> FakeMRTGFile;
+								FakeMRTGFile.reserve(2 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT + YEAR_COUNT); // this might speed things up slightly
+								while (std::getline(TheFile, TheLine))
+								{
+									VictronSmartLithium value;
+									value.ReadCache(TheLine);
+									FakeMRTGFile.push_back(value);
+								}
+								if (FakeMRTGFile.size() == (2 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT + YEAR_COUNT)) // simple check to see if we are the right size
+									VictronMRTGLogs.insert(std::pair<bdaddr_t, std::vector<VictronSmartLithium>>(TheBlueToothAddress, FakeMRTGFile));
+							}
+						}
+					}
+					TheFile.close();
+				}
+				files.pop_front();
+			}
+		}
+	}
+}
+/////////////////////////////////////////////////////////////////////////////
 std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbusBTAddress)
 {
 	std::ostringstream ssOutput;
@@ -1905,9 +2016,9 @@ int main(int argc, char** argv)
 		//if (SVGTitleMapFilename.empty()) // If this wasn't set as a parameter, look in the SVG Directory for a default titlemap
 		//	SVGTitleMapFilename = std::filesystem::path(SVGDirectory / "gvh-titlemap.txt");
 		//ReadTitleMap(SVGTitleMapFilename);
-		//ReadCacheDirectory(); // if cache directory is configured, read it before reading all the normal logs
+		ReadCacheDirectory(); // if cache directory is configured, read it before reading all the normal logs
 		ReadLoggedData(); // only read the logged data if creating SVG files
-		//GenerateCacheFile(GoveeMRTGLogs); // update cache files if any new data was in logs
+		GenerateCacheFile(VictronMRTGLogs); // update cache files if any new data was in logs
 		WriteAllSVG();
 	}
 
@@ -2021,8 +2132,7 @@ int main(int argc, char** argv)
 							std::cout << "[" << getTimeISO8601(true) << "] " << std::dec << LogFileTime << " seconds or more have passed. Writing LOG Files" << std::endl;
 						TimeStart = TimeNow;
 						GenerateLogFile(VictronVirtualLog);
-						//GenerateCacheFile(GoveeMRTGLogs); // flush FakeMRTG data to cache files
-						//MonitorLoggedData();
+						GenerateCacheFile(VictronMRTGLogs); // flush FakeMRTG data to cache files
 					}
 				}
 				bluez_discovery(dbus_conn, BlueZAdapter.c_str(), false);
