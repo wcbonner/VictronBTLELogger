@@ -740,8 +740,8 @@ public:
 	VictronSmartLithium() : Time(0), Cell { 0 }, Voltage(0), Temperature(0), TemperatureMin(DBL_MAX), TemperatureMax(-DBL_MAX), Averages(0) { };
 	VictronSmartLithium(const std::string& data);
 	time_t Time;
-	bool ReadManufacturerData(const std::vector<uint8_t> & ManufacturerData);
-	bool ReadManufacturerData(const std::string& data);
+	bool ReadManufacturerData(const std::vector<uint8_t> & ManufacturerData, const time_t newtime = 0);
+	bool ReadManufacturerData(const std::string& data, const time_t newtime = 0);
 	std::string WriteConsole(void) const;
 	std::string WriteCache(void) const;
 	bool ReadCache(const std::string& data);
@@ -778,7 +778,7 @@ VictronSmartLithium::VictronSmartLithium(const std::string& data)
 	TheLine >> ManufacturerData;
 	ReadManufacturerData(ManufacturerData);
 }
-bool VictronSmartLithium::ReadManufacturerData(const std::vector<uint8_t>& ManufacturerData)
+bool VictronSmartLithium::ReadManufacturerData(const std::vector<uint8_t>& ManufacturerData, const time_t newtime)
 {
 	bool rval = false;
 	if (ManufacturerData.size() >= 8 + sizeof(VictronExtraData_t::SmartLithium)) // Make sure data is big enough to be valid
@@ -788,6 +788,8 @@ bool VictronSmartLithium::ReadManufacturerData(const std::vector<uint8_t>& Manuf
 			(ManufacturerData[6] == 0) &&
 			(ManufacturerData[7] == 0)) // make sure it's already been decrypted
 		{
+			if (newtime != 0)
+				Time = newtime;
 			VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data() + 8);
 			if (ExtraDataPtr->SmartLithium.cell_1 != 0x7f) Cell[0] = double(ExtraDataPtr->SmartLithium.cell_1) * 0.01 + 2.60;
 			if (ExtraDataPtr->SmartLithium.cell_2 != 0x7f) Cell[1] = double(ExtraDataPtr->SmartLithium.cell_2) * 0.01 + 2.60;
@@ -806,12 +808,12 @@ bool VictronSmartLithium::ReadManufacturerData(const std::vector<uint8_t>& Manuf
 	}
 	return(rval);
 }
-bool VictronSmartLithium::ReadManufacturerData(const std::string& data)
+bool VictronSmartLithium::ReadManufacturerData(const std::string& data, const time_t newtime)
 {
 	std::vector<uint8_t> ManufacturerData;
 	for (auto i = 0; i < data.length(); i += 2) 
 		ManufacturerData.push_back(std::stoi(data.substr(i, 2), nullptr, 16));
-	return(ReadManufacturerData(ManufacturerData));
+	return(ReadManufacturerData(ManufacturerData, newtime));
 }
 std::string VictronSmartLithium::WriteConsole(void) const
 {
@@ -1710,7 +1712,7 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 																//UpdateMRTGData(localBTAddress, localTemp);	// puts the measurement in the fake MRTG data structure
 																//GoveeLastDownload.insert(std::pair<bdaddr_t, time_t>(localBTAddress, 0));	// Makes sure the Bluetooth Address is in the list to get downloaded historical data
 																VictronSmartLithium localLithium;
-																if (localLithium.ReadManufacturerData(ManufacturerData))
+																if (localLithium.ReadManufacturerData(ManufacturerData, TimeNow))
 																	UpdateMRTGData(dbusBTAddress, localLithium);	// puts the measurement in the fake MRTG data structure
 																if (ConsoleVerbosity > 0)
 																{
