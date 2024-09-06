@@ -21,7 +21,7 @@ if (POLICY CMP0115)
 endif()
 
 project (VictronBTLELogger
-    VERSION 3.20240906.0
+    VERSION 3.20240906.4
     DESCRIPTION "Listen and log Victron Direct Bluetooth Low Energy Advertisments via BlueZ and DBus"
     HOMEPAGE_URL https://github.com/wcbonner/VictronBTLELogger
 )
