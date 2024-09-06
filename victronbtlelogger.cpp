@@ -764,6 +764,8 @@ protected:
 };
 VictronSmartLithium::VictronSmartLithium(const std::string& data)
 {
+	for (auto& a : Cell)
+		a = 0;
 	Averages = 0;
 	std::istringstream TheLine(data);
 	// erase any nulls from the data. these are occasionally in the log file when the platform crashed during a write to the logfile.
