@@ -1048,8 +1048,11 @@ void ReadMRTGData(const bdaddr_t& TheAddress, std::vector<VictronSmartLithium>& 
 	}
 }
 /////////////////////////////////////////////////////////////////////////////
-void WriteSVG(std::vector<VictronSmartLithium>& TheValues, const std::filesystem::path& SVGFileName, const std::string& Title = "", const GraphType graph = GraphType::daily, const bool Fahrenheit = true, const bool DrawBattery = false, const bool MinMax = false)
+void WriteSVG(std::vector<VictronSmartLithium>& TheValues, const std::filesystem::path& SVGFileName, const std::string& Title = "", const GraphType graph = GraphType::daily, const bool Fahrenheit = true, const bool DarkStyle = false)
 {
+	const bool DrawVoltage = true;
+	const bool DrawBattery = false;
+	//const bool MinMax = false;
 	if (!TheValues.empty())
 	{
 		// By declaring these items here, I'm then basing all my other dimensions on these
@@ -1076,44 +1079,45 @@ void WriteSVG(std::vector<VictronSmartLithium>& TheValues, const std::filesystem
 				std::string YLegendTemperature(tempOString.str());
 				tempOString = std::ostringstream();
 				tempOString << "Voltage (" << TheValues[0].GetVoltage() << "V)";
+				std::string YLegendVoltage(tempOString.str());
 				std::string YLegendBattery(tempOString.str());
 				int GraphTop = FontSize + TickSize;
 				int GraphBottom = SVGHeight - GraphTop;
 				int GraphRight = SVGWidth - GraphTop;
-				//if (DrawHumidity) // this also has to add the secondary axis
-				//{
-				//	GraphWidth -= FontSize * 2;
-				//	GraphRight -= FontSize + TickSize * 2;
-				//}
+				if (DrawVoltage) // this also has to add the secondary axis
+				{
+					GraphWidth -= FontSize * 2;
+					GraphRight -= FontSize + TickSize * 2;
+				}
 				if (DrawBattery)
 					GraphWidth -= FontSize;
 				int GraphLeft = GraphRight - GraphWidth;
 				int GraphVerticalDivision = (GraphBottom - GraphTop) / 4;
 				double TempMin = DBL_MAX;
 				double TempMax = -DBL_MAX;
-				double HumiMin = DBL_MAX;
-				double HumiMax = -DBL_MAX;
-				if (MinMax)
-					for (auto index = 0; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
-					{
-						TempMin = std::min(TempMin, TheValues[index].GetTemperatureMin(Fahrenheit));
-						TempMax = std::max(TempMax, TheValues[index].GetTemperatureMax(Fahrenheit));
-						//HumiMin = std::min(HumiMin, TheValues[index].GetHumidityMin());
-						//HumiMax = std::max(HumiMax, TheValues[index].GetHumidityMax());
-					}
-				else
+				double VoltMin = DBL_MAX;
+				double VoltMax = -DBL_MAX;
+				//if (MinMax)
+				//	for (auto index = 0; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
+				//	{
+				//		TempMin = std::min(TempMin, TheValues[index].GetTemperatureMin(Fahrenheit));
+				//		TempMax = std::max(TempMax, TheValues[index].GetTemperatureMax(Fahrenheit));
+				//		VoltMin = std::min(VoltMin, TheValues[index].GetVoltage());
+				//		VoltMax = std::max(VoltMax, TheValues[index].GetVoltage());
+				//	}
+				//else
 					for (auto index = 0; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
 					{
 						TempMin = std::min(TempMin, TheValues[index].GetTemperature(Fahrenheit));
 						TempMax = std::max(TempMax, TheValues[index].GetTemperature(Fahrenheit));
-						//HumiMin = std::min(HumiMin, TheValues[index].GetHumidity());
-						//HumiMax = std::max(HumiMax, TheValues[index].GetHumidity());
+						VoltMin = std::min(VoltMin, TheValues[index].GetVoltage());
+						VoltMax = std::max(VoltMax, TheValues[index].GetVoltage());
 					}
 
 				double TempVerticalDivision = (TempMax - TempMin) / 4;
 				double TempVerticalFactor = (GraphBottom - GraphTop) / (TempMax - TempMin);
-				double HumiVerticalDivision = (HumiMax - HumiMin) / 4;
-				double HumiVerticalFactor = (GraphBottom - GraphTop) / (HumiMax - HumiMin);
+				double VoltVerticalDivision = (VoltMax - VoltMin) / 4;
+				double VoltVerticalFactor = (GraphBottom - GraphTop) / (VoltMax - VoltMin);
 				int FreezingLine = 0; // outside the range of the graph
 				if (Fahrenheit)
 				{
@@ -1134,17 +1138,18 @@ void WriteSVG(std::vector<VictronSmartLithium>& TheValues, const std::filesystem
 				SVGFile << "\t\ttext { font-family: sans-serif; font-size: " << FontSize << "px; fill: black; }" << std::endl;
 				SVGFile << "\t\tline { stroke: black; }" << std::endl;
 				SVGFile << "\t\tpolygon { fill-opacity: 0.5; }" << std::endl;
-#ifdef _DARK_STYLE_
-				SVGFile << "\t@media only screen and (prefers-color-scheme: dark) {" << std::endl;
-				SVGFile << "\t\ttext { fill: grey; }" << std::endl;
-				SVGFile << "\t\tline { stroke: grey; }" << std::endl;
-				SVGFile << "\t}" << std::endl;
-#endif // _DARK_STYLE_
+				if (DarkStyle)
+				{
+					SVGFile << "\t@media only screen and (prefers-color-scheme: dark) {" << std::endl;
+					SVGFile << "\t\ttext { fill: grey; }" << std::endl;
+					SVGFile << "\t\tline { stroke: grey; }" << std::endl;
+					SVGFile << "\t}" << std::endl;
+				}
 				SVGFile << "\t</style>" << std::endl;
 #ifdef DEBUG
-				SVGFile << "<!-- HumiMax: " << HumiMax << " -->" << std::endl;
-				SVGFile << "<!-- HumiMin: " << HumiMin << " -->" << std::endl;
-				SVGFile << "<!-- HumiVerticalFactor: " << HumiVerticalFactor << " -->" << std::endl;
+				SVGFile << "<!-- VoltMax: " << VoltMax << " -->" << std::endl;
+				SVGFile << "<!-- VoltMin: " << VoltMin << " -->" << std::endl;
+				SVGFile << "<!-- VoltVerticalFactor: " << VoltVerticalFactor << " -->" << std::endl;
 #endif // DEBUG
 				SVGFile << "\t<rect style=\"fill-opacity:0;stroke:grey;stroke-width:2\" width=\"" << SVGWidth << "\" height=\"" << SVGHeight << "\" />" << std::endl;
 
@@ -1153,68 +1158,68 @@ void WriteSVG(std::vector<VictronSmartLithium>& TheValues, const std::filesystem
 				SVGFile << "\t<text x=\"" << GraphLeft << "\" y=\"" << GraphTop - 2 << "\">" << Title << "</text>" << std::endl;
 				SVGFile << "\t<text style=\"text-anchor:end\" x=\"" << GraphRight << "\" y=\"" << GraphTop - 2 << "\">" << timeToExcelLocal(TheValues[0].Time) << "</text>" << std::endl;
 				SVGFile << "\t<text style=\"fill:blue;text-anchor:middle\" x=\"" << FontSize * LegendIndex << "\" y=\"50%\" transform=\"rotate(270 " << FontSize * LegendIndex << "," << (GraphTop + GraphBottom) / 2 << ")\">" << YLegendTemperature << "</text>" << std::endl;
-				//if (DrawHumidity)
-				//{
-				//	LegendIndex++;
-				//	SVGFile << "\t<text style=\"fill:green;text-anchor:middle\" x=\"" << FontSize * LegendIndex << "\" y=\"50%\" transform=\"rotate(270 " << FontSize * LegendIndex << "," << (GraphTop + GraphBottom) / 2 << ")\">" << YLegendHumidity << "</text>" << std::endl;
-				//}
+				if (DrawVoltage)
+				{
+					LegendIndex++;
+					SVGFile << "\t<text style=\"fill:green;text-anchor:middle\" x=\"" << FontSize * LegendIndex << "\" y=\"50%\" transform=\"rotate(270 " << FontSize * LegendIndex << "," << (GraphTop + GraphBottom) / 2 << ")\">" << YLegendVoltage << "</text>" << std::endl;
+				}
 				if (DrawBattery)
 				{
 					LegendIndex++;
 					SVGFile << "\t<text style=\"fill:OrangeRed\" text-anchor=\"middle\" x=\"" << FontSize * LegendIndex << "\" y=\"50%\" transform=\"rotate(270 " << FontSize * LegendIndex << "," << (GraphTop + GraphBottom) / 2 << ")\">" << YLegendBattery << "</text>" << std::endl;
 				}
-				//if (DrawHumidity)
-				//{
-				//	if (MinMax)
-				//	{
-				//		SVGFile << "\t<!-- Humidity Max -->" << std::endl;
-				//		SVGFile << "\t<polygon style=\"fill:lime;stroke:green;clip-path:url(#GraphRegion)\" points=\"";
-				//		SVGFile << GraphLeft + 1 << "," << GraphBottom - 1 << " ";
-				//		for (auto index = 0; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
-				//			SVGFile << index + GraphLeft << "," << int(((HumiMax - TheValues[index].GetHumidityMax()) * HumiVerticalFactor) + GraphTop) << " ";
-				//		if (GraphWidth < TheValues.size())
-				//			SVGFile << GraphRight - 1 << "," << GraphBottom - 1;
-				//		else
-				//			SVGFile << GraphRight - (GraphWidth - TheValues.size()) << "," << GraphBottom - 1;
-				//		SVGFile << "\" />" << std::endl;
-				//		SVGFile << "\t<!-- Humidity Min -->" << std::endl;
-				//		SVGFile << "\t<polygon style=\"fill:lime;stroke:green;clip-path:url(#GraphRegion)\" points=\"";
-				//		SVGFile << GraphLeft + 1 << "," << GraphBottom - 1 << " ";
-				//		for (auto index = 0; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
-				//			SVGFile << index + GraphLeft << "," << int(((HumiMax - TheValues[index].GetHumidityMin()) * HumiVerticalFactor) + GraphTop) << " ";
-				//		if (GraphWidth < TheValues.size())
-				//			SVGFile << GraphRight - 1 << "," << GraphBottom - 1;
-				//		else
-				//			SVGFile << GraphRight - (GraphWidth - TheValues.size()) << "," << GraphBottom - 1;
-				//		SVGFile << "\" />" << std::endl;
-				//	}
-				//	else
-				//	{
-				//		// Humidity Graphic as a Filled polygon
-				//		SVGFile << "\t<!-- Humidity -->" << std::endl;
-				//		SVGFile << "\t<polygon style=\"fill:lime;stroke:green;clip-path:url(#GraphRegion)\" points=\"";
-				//		SVGFile << GraphLeft + 1 << "," << GraphBottom - 1 << " ";
-				//		for (auto index = 0; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
-				//			SVGFile << index + GraphLeft << "," << int(((HumiMax - TheValues[index].GetHumidity()) * HumiVerticalFactor) + GraphTop) << " ";
-				//		if (GraphWidth < TheValues.size())
-				//			SVGFile << GraphRight - 1 << "," << GraphBottom - 1;
-				//		else
-				//			SVGFile << GraphRight - (GraphWidth - TheValues.size()) << "," << GraphBottom - 1;
-				//		SVGFile << "\" />" << std::endl;
-				//	}
-				//}
+				if (DrawVoltage)
+				{
+					//if (MinMax)
+					//{
+					//	SVGFile << "\t<!-- Humidity Max -->" << std::endl;
+					//	SVGFile << "\t<polygon style=\"fill:lime;stroke:green;clip-path:url(#GraphRegion)\" points=\"";
+					//	SVGFile << GraphLeft + 1 << "," << GraphBottom - 1 << " ";
+					//	for (auto index = 0; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
+					//		SVGFile << index + GraphLeft << "," << int(((VoltMax - TheValues[index].GetHumidityMax()) * VoltVerticalFactor) + GraphTop) << " ";
+					//	if (GraphWidth < TheValues.size())
+					//		SVGFile << GraphRight - 1 << "," << GraphBottom - 1;
+					//	else
+					//		SVGFile << GraphRight - (GraphWidth - TheValues.size()) << "," << GraphBottom - 1;
+					//	SVGFile << "\" />" << std::endl;
+					//	SVGFile << "\t<!-- Humidity Min -->" << std::endl;
+					//	SVGFile << "\t<polygon style=\"fill:lime;stroke:green;clip-path:url(#GraphRegion)\" points=\"";
+					//	SVGFile << GraphLeft + 1 << "," << GraphBottom - 1 << " ";
+					//	for (auto index = 0; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
+					//		SVGFile << index + GraphLeft << "," << int(((VoltMax - TheValues[index].GetHumidityMin()) * VoltVerticalFactor) + GraphTop) << " ";
+					//	if (GraphWidth < TheValues.size())
+					//		SVGFile << GraphRight - 1 << "," << GraphBottom - 1;
+					//	else
+					//		SVGFile << GraphRight - (GraphWidth - TheValues.size()) << "," << GraphBottom - 1;
+					//	SVGFile << "\" />" << std::endl;
+					//}
+					//else
+					//{
+						// Voltage Graphic as a Filled polygon
+						SVGFile << "\t<!-- Voltage -->" << std::endl;
+						SVGFile << "\t<polygon style=\"fill:lime;stroke:green;clip-path:url(#GraphRegion)\" points=\"";
+						SVGFile << GraphLeft + 1 << "," << GraphBottom - 1 << " ";
+						for (auto index = 0; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
+							SVGFile << index + GraphLeft << "," << int(((VoltMax - TheValues[index].GetVoltage()) * VoltVerticalFactor) + GraphTop) << " ";
+						if (GraphWidth < TheValues.size())
+							SVGFile << GraphRight - 1 << "," << GraphBottom - 1;
+						else
+							SVGFile << GraphRight - (GraphWidth - TheValues.size()) << "," << GraphBottom - 1;
+						SVGFile << "\" />" << std::endl;
+					//}
+				}
 
 				// Top Line
 				SVGFile << "\t<line x1=\"" << GraphLeft - TickSize << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphRight + TickSize << "\" y2=\"" << GraphTop << "\"/>" << std::endl;
 				SVGFile << "\t<text style=\"fill:blue;text-anchor:end;dominant-baseline:middle\" x=\"" << GraphLeft - TickSize << "\" y=\"" << GraphTop << "\">" << std::fixed << std::setprecision(1) << TempMax << "</text>" << std::endl;
-				//if (DrawHumidity)
-				//	SVGFile << "\t<text style=\"fill:green;dominant-baseline:middle\" x=\"" << GraphRight + TickSize << "\" y=\"" << GraphTop << "\">" << std::fixed << std::setprecision(1) << HumiMax << "</text>" << std::endl;
+				if (DrawVoltage)
+					SVGFile << "\t<text style=\"fill:green;dominant-baseline:middle\" x=\"" << GraphRight + TickSize << "\" y=\"" << GraphTop << "\">" << std::fixed << std::setprecision(1) << VoltMax << "</text>" << std::endl;
 
 				// Bottom Line
 				SVGFile << "\t<line x1=\"" << GraphLeft - TickSize << "\" y1=\"" << GraphBottom << "\" x2=\"" << GraphRight + TickSize << "\" y2=\"" << GraphBottom << "\"/>" << std::endl;
 				SVGFile << "\t<text style=\"fill:blue;text-anchor:end;dominant-baseline:middle\" x=\"" << GraphLeft - TickSize << "\" y=\"" << GraphBottom << "\">" << std::fixed << std::setprecision(1) << TempMin << "</text>" << std::endl;
-				//if (DrawHumidity)
-				//	SVGFile << "\t<text style=\"fill:green;dominant-baseline:middle\" x=\"" << GraphRight + TickSize << "\" y=\"" << GraphBottom << "\">" << std::fixed << std::setprecision(1) << HumiMin << "</text>" << std::endl;
+				if (DrawVoltage)
+					SVGFile << "\t<text style=\"fill:green;dominant-baseline:middle\" x=\"" << GraphRight + TickSize << "\" y=\"" << GraphBottom << "\">" << std::fixed << std::setprecision(1) << VoltMin << "</text>" << std::endl;
 
 				// Left Line
 				SVGFile << "\t<line x1=\"" << GraphLeft << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphLeft << "\" y2=\"" << GraphBottom << "\"/>" << std::endl;
@@ -1227,8 +1232,8 @@ void WriteSVG(std::vector<VictronSmartLithium>& TheValues, const std::filesystem
 				{
 					SVGFile << "\t<line style=\"stroke-dasharray:1\" x1=\"" << GraphLeft - TickSize << "\" y1=\"" << GraphTop + (GraphVerticalDivision * index) << "\" x2=\"" << GraphRight + TickSize << "\" y2=\"" << GraphTop + (GraphVerticalDivision * index) << "\" />" << std::endl;
 					SVGFile << "\t<text style=\"fill:blue;text-anchor:end;dominant-baseline:middle\" x=\"" << GraphLeft - TickSize << "\" y=\"" << GraphTop + (GraphVerticalDivision * index) << "\">" << std::fixed << std::setprecision(1) << TempMax - (TempVerticalDivision * index) << "</text>" << std::endl;
-					//if (DrawHumidity)
-					//	SVGFile << "\t<text style=\"fill:green;dominant-baseline:middle\" x=\"" << GraphRight + TickSize << "\" y=\"" << GraphTop + (GraphVerticalDivision * index) << "\">" << std::fixed << std::setprecision(1) << HumiMax - (HumiVerticalDivision * index) << "</text>" << std::endl;
+					if (DrawVoltage)
+						SVGFile << "\t<text style=\"fill:green;dominant-baseline:middle\" x=\"" << GraphRight + TickSize << "\" y=\"" << GraphTop + (GraphVerticalDivision * index) << "\">" << std::fixed << std::setprecision(1) << VoltMax - (VoltVerticalDivision * index) << "</text>" << std::endl;
 				}
 
 				// Horizontal Division Dashed Lines
@@ -1287,18 +1292,18 @@ void WriteSVG(std::vector<VictronSmartLithium>& TheValues, const std::filesystem
 				// Directional Arrow
 				SVGFile << "\t<polygon style=\"fill:red;stroke:red;fill-opacity:1;\" points=\"" << GraphLeft - 3 << "," << GraphBottom << " " << GraphLeft + 3 << "," << GraphBottom - 3 << " " << GraphLeft + 3 << "," << GraphBottom + 3 << "\" />" << std::endl;
 
-				if (MinMax)
-				{
-					// Temperature Values as a filled polygon showing the minimum and maximum
-					SVGFile << "\t<!-- Temperature MinMax -->" << std::endl;
-					SVGFile << "\t<polygon style=\"fill:blue;stroke:blue;clip-path:url(#GraphRegion)\" points=\"";
-					for (auto index = 1; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
-						SVGFile << index + GraphLeft << "," << int(((TempMax - TheValues[index].GetTemperatureMax(Fahrenheit)) * TempVerticalFactor) + GraphTop) << " ";
-					for (auto index = (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()) - 1; index > 0; index--)
-						SVGFile << index + GraphLeft << "," << int(((TempMax - TheValues[index].GetTemperatureMin(Fahrenheit)) * TempVerticalFactor) + GraphTop) << " ";
-					SVGFile << "\" />" << std::endl;
-				}
-				else
+				//if (MinMax)
+				//{
+				//	// Temperature Values as a filled polygon showing the minimum and maximum
+				//	SVGFile << "\t<!-- Temperature MinMax -->" << std::endl;
+				//	SVGFile << "\t<polygon style=\"fill:blue;stroke:blue;clip-path:url(#GraphRegion)\" points=\"";
+				//	for (auto index = 1; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
+				//		SVGFile << index + GraphLeft << "," << int(((TempMax - TheValues[index].GetTemperatureMax(Fahrenheit)) * TempVerticalFactor) + GraphTop) << " ";
+				//	for (auto index = (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()) - 1; index > 0; index--)
+				//		SVGFile << index + GraphLeft << "," << int(((TempMax - TheValues[index].GetTemperatureMin(Fahrenheit)) * TempVerticalFactor) + GraphTop) << " ";
+				//	SVGFile << "\" />" << std::endl;
+				//}
+				//else
 				{
 					// Temperature Values as a continuous line
 					SVGFile << "\t<!-- Temperature -->" << std::endl;
@@ -1340,7 +1345,7 @@ void WriteAllSVG()
 			btAddress.erase(pos, 1);
 		std::string ssTitle(btAddress);
 		if (VictronNames.find(TheAddress) != VictronNames.end())
-			ssTitle = VictronNames.find(TheAddress)->second + " (" + btAddress + ")";
+			ssTitle = VictronNames.find(TheAddress)->second + " (" + ba2string(TheAddress) + ")";
 		std::filesystem::path OutputPath;
 		std::ostringstream OutputFilename;
 		OutputFilename.str("");
