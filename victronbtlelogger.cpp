@@ -2027,6 +2027,15 @@ int main(int argc, char** argv)
 
 	ReadVictronEncryptionKeys(VictronEncryptionKeyFilename);
 
+	if (VictronEncryptionKeys.empty())
+	{
+		if (ConsoleVerbosity > 0)
+			std::cout << "[" << getTimeISO8601(true) << "] No Victron Encryption Keys Found! Exiting." << std::endl;
+		else
+			std::cerr << "No Victron Encryption Keys Found! Exiting." << std::endl;
+		exit(EXIT_FAILURE);
+	}
+
 	DBusError dbus_error;
 	dbus_error_init(&dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusErrors.html#ga8937f0b7cdf8554fa6305158ce453fbe
 
@@ -2153,5 +2162,5 @@ int main(int argc, char** argv)
 		dbus_connection_unref(dbus_conn);
 	}
 	std::cerr << ProgramVersionString << " (exiting)" << std::endl;
-	return 0;
+	return(EXIT_SUCCESS);
 }
