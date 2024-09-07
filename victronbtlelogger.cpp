@@ -907,12 +907,12 @@ VictronSmartLithium& VictronSmartLithium::operator +=(const VictronSmartLithium&
 	return(*this);
 }
 /////////////////////////////////////////////////////////////////////////////
-std::map<bdaddr_t, std::vector<VictronSmartLithium>> VictronMRTGLogs; // memory map of BT addresses and vector structure similar to MRTG Log Files
+std::map<bdaddr_t, std::vector<VictronSmartLithium>> VictronSmartLithiumMRTGLogs; // memory map of BT addresses and vector structure similar to MRTG Log Files
 std::map<bdaddr_t, std::string> VictronNames;
 void UpdateMRTGData(const bdaddr_t& TheAddress, VictronSmartLithium& TheValue)
 {
 	std::vector<VictronSmartLithium> foo;
-	auto ret = VictronMRTGLogs.insert(std::pair<bdaddr_t, std::vector<VictronSmartLithium>>(TheAddress, foo));
+	auto ret = VictronSmartLithiumMRTGLogs.insert(std::pair<bdaddr_t, std::vector<VictronSmartLithium>>(TheAddress, foo));
 	std::vector<VictronSmartLithium>& FakeMRTGFile = ret.first->second;
 	if (FakeMRTGFile.empty())
 	{
@@ -996,8 +996,8 @@ enum class GraphType { daily, weekly, monthly, yearly };
 // Returns a curated vector of data points specific to the requested graph type from the internal memory structure map keyed off the Bluetooth address.
 void ReadMRTGData(const bdaddr_t& TheAddress, std::vector<VictronSmartLithium>& TheValues, const GraphType graph = GraphType::daily)
 {
-	auto it = VictronMRTGLogs.find(TheAddress);
-	if (it != VictronMRTGLogs.end())
+	auto it = VictronSmartLithiumMRTGLogs.find(TheAddress);
+	if (it != VictronSmartLithiumMRTGLogs.end())
 	{
 		if (it->second.size() > 0)
 		{
@@ -1281,7 +1281,7 @@ void WriteSVG(std::vector<VictronSmartLithium>& TheValues, const std::filesystem
 void WriteAllSVG()
 {
 	//ReadTitleMap(SVGTitleMapFilename);
-	for (auto it = VictronMRTGLogs.begin(); it != VictronMRTGLogs.end(); it++)
+	for (auto it = VictronSmartLithiumMRTGLogs.begin(); it != VictronSmartLithiumMRTGLogs.end(); it++)
 	{
 		const bdaddr_t TheAddress = it->first;
 		std::string btAddress(ba2string(TheAddress));
@@ -1342,8 +1342,8 @@ void ReadLoggedData(const std::filesystem::path& filename)
 		FileStat.st_mtim.tv_sec = 0;
 		if (0 == stat64(filename.c_str(), &FileStat))	// returns 0 if the file-status information is obtained
 		{
-			auto it = VictronMRTGLogs.find(TheBlueToothAddress);
-			if (it != VictronMRTGLogs.end())
+			auto it = VictronSmartLithiumMRTGLogs.find(TheBlueToothAddress);
+			if (it != VictronSmartLithiumMRTGLogs.end())
 				if (!it->second.empty())
 					if (FileStat.st_mtim.tv_sec < (it->second.begin()->Time))	// only read the file if it more recent than existing data
 						bReadFile = false;
@@ -1498,7 +1498,7 @@ void ReadCacheDirectory(void)
 									FakeMRTGFile.push_back(value);
 								}
 								if (FakeMRTGFile.size() == (2 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT + YEAR_COUNT)) // simple check to see if we are the right size
-									VictronMRTGLogs.insert(std::pair<bdaddr_t, std::vector<VictronSmartLithium>>(TheBlueToothAddress, FakeMRTGFile));
+									VictronSmartLithiumMRTGLogs.insert(std::pair<bdaddr_t, std::vector<VictronSmartLithium>>(TheBlueToothAddress, FakeMRTGFile));
 							}
 						}
 					}
@@ -1975,7 +1975,7 @@ int main(int argc, char** argv)
 		//ReadTitleMap(SVGTitleMapFilename);
 		ReadCacheDirectory(); // if cache directory is configured, read it before reading all the normal logs
 		ReadLoggedData(); // only read the logged data if creating SVG files
-		GenerateCacheFile(VictronMRTGLogs); // update cache files if any new data was in logs
+		GenerateCacheFile(VictronSmartLithiumMRTGLogs); // update cache files if any new data was in logs
 		WriteAllSVG();
 	}
 
@@ -2098,7 +2098,7 @@ int main(int argc, char** argv)
 							std::cout << "[" << getTimeISO8601(true) << "] " << std::dec << LogFileTime << " seconds or more have passed. Writing LOG Files" << std::endl;
 						TimeStart = TimeNow;
 						GenerateLogFile(VictronVirtualLog);
-						GenerateCacheFile(VictronMRTGLogs); // flush FakeMRTG data to cache files
+						GenerateCacheFile(VictronSmartLithiumMRTGLogs); // flush FakeMRTG data to cache files
 					}
 				}
 				bluez_discovery(dbus_conn, BlueZAdapter.c_str(), false);
