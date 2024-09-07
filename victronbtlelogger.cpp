@@ -1103,7 +1103,7 @@ void WriteSVG(std::vector<VictronSmartLithium>& TheValues, const std::filesystem
 						VoltMin = std::min(VoltMin, TheValues[index].GetCellVoltage(cell));
 					VoltMax = std::max(VoltMax, TheValues[index].GetVoltage());
 					for (auto cell = 0; cell < (TheValues[index].GetCellCount() - 1); cell++)
-						VoltMax = std::min(VoltMax, TheValues[index].GetCellVoltage(cell));
+						VoltMax = std::max(VoltMax, TheValues[index].GetCellVoltage(cell));
 				}
 
 				double TempVerticalDivision = (TempMax - TempMin) / 4;
