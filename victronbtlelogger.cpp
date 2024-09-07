@@ -738,7 +738,7 @@ class VictronSmartLithium
 {
 public:
 	VictronSmartLithium() : Time(0), Cell { 0 }, Voltage(0), Temperature(0), TemperatureMin(DBL_MAX), TemperatureMax(-DBL_MAX), Averages(0) { };
-	VictronSmartLithium(const std::string& data);
+	VictronSmartLithium(const std::string& data); // This is for reading from log file
 	time_t Time;
 	bool ReadManufacturerData(const std::vector<uint8_t> & ManufacturerData, const time_t newtime = 0);
 	bool ReadManufacturerData(const std::string& data, const time_t newtime = 0);
@@ -907,7 +907,158 @@ VictronSmartLithium& VictronSmartLithium::operator +=(const VictronSmartLithium&
 	return(*this);
 }
 /////////////////////////////////////////////////////////////////////////////
+class VictronOrionXS
+{
+public:
+	VictronOrionXS() : Time(0), OutputVoltage(0), OutputCurrent(0), InputVoltage(0), InputCurrent(0), Averages(0) { };
+	VictronOrionXS(const std::string& data); // This is for reading from log file
+	time_t Time;
+	bool ReadManufacturerData(const std::vector<uint8_t>& ManufacturerData, const time_t newtime = 0);
+	bool ReadManufacturerData(const std::string& data, const time_t newtime = 0);
+	std::string WriteConsole(void) const;
+	std::string WriteCache(void) const;
+	bool ReadCache(const std::string& data);
+	bool IsValid(void) const { return(Averages > 0); };
+	enum granularity { day, week, month, year };
+	void NormalizeTime(granularity type);
+	granularity GetTimeGranularity(void) const;
+	VictronOrionXS& operator +=(const VictronOrionXS& b);
+protected:
+	double OutputVoltage;
+	double OutputCurrent;
+	double InputVoltage;
+	double InputCurrent;
+	int Averages;
+};
+VictronOrionXS::VictronOrionXS(const std::string& data) : Time(0), OutputVoltage(0), OutputCurrent(0), InputVoltage(0), InputCurrent(0), Averages(0)
+{
+	//Averages = 0;
+	std::istringstream TheLine(data);
+	// erase any nulls from the data. these are occasionally in the log file when the platform crashed during a write to the logfile.
+	while (TheLine.peek() == '\000')
+		TheLine.get();
+	std::string theDate;
+	TheLine >> theDate;
+	Time = ISO8601totime(theDate);
+	std::string ManufacturerData;
+	TheLine >> ManufacturerData;
+	ReadManufacturerData(ManufacturerData);
+}
+bool VictronOrionXS::ReadManufacturerData(const std::vector<uint8_t>& ManufacturerData, const time_t newtime)
+{
+	bool rval = false;
+	if (ManufacturerData.size() >= 8 + sizeof(VictronExtraData_t::OrionXS)) // Make sure data is big enough to be valid
+	{
+		if ((ManufacturerData[4] == 0x0f) && // make sure it's an Orion XS
+			(ManufacturerData[5] == 0) &&
+			(ManufacturerData[6] == 0) &&
+			(ManufacturerData[7] == 0)) // make sure it's already been decrypted
+		{
+			if (newtime != 0)
+				Time = newtime;
+			VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data() + 8);
+			if (ExtraDataPtr->OrionXS.output_voltage != 0x7FFF) OutputVoltage = double(ExtraDataPtr->OrionXS.output_voltage) * 0.01;
+			if (ExtraDataPtr->OrionXS.output_current != 0x7FFF) OutputCurrent = double(ExtraDataPtr->OrionXS.output_current) * 0.01;
+			if (ExtraDataPtr->OrionXS.input_voltage != 0xFFFF) InputVoltage = double(ExtraDataPtr->OrionXS.input_voltage) * 0.01;
+			if (ExtraDataPtr->OrionXS.input_current != 0xFFFF) InputCurrent = double(ExtraDataPtr->OrionXS.input_current) * 0.01;
+			Averages = 1;
+			rval = true;
+		}
+	}
+	return(rval);
+}
+bool VictronOrionXS::ReadManufacturerData(const std::string& data, const time_t newtime)
+{
+	std::vector<uint8_t> ManufacturerData;
+	for (auto i = 0; i < data.length(); i += 2)
+		ManufacturerData.push_back(std::stoi(data.substr(i, 2), nullptr, 16));
+	return(ReadManufacturerData(ManufacturerData, newtime));
+}
+std::string VictronOrionXS::WriteConsole(void) const
+{
+	std::ostringstream ssValue;
+	ssValue << " (Orion XS)";
+	ssValue << " OutputVoltage: " << OutputVoltage << "V";
+	ssValue << " OutputCurrent: " << OutputCurrent << "A";
+	ssValue << " InputVoltage: " << InputVoltage << "V";
+	ssValue << " InputCurrent: " << InputCurrent << "A";
+	return(ssValue.str());
+}
+std::string VictronOrionXS::WriteCache(void) const
+{
+	std::ostringstream ssValue;
+	ssValue << Time;
+	ssValue << "\t" << Averages;
+	ssValue << "\t" << OutputVoltage;
+	ssValue << "\t" << OutputCurrent;
+	ssValue << "\t" << InputVoltage;
+	ssValue << "\t" << InputCurrent;
+	return(ssValue.str());
+}
+bool VictronOrionXS::ReadCache(const std::string& data)
+{
+	bool rval = false;
+	std::istringstream ssValue(data);
+	ssValue >> Time;
+	ssValue >> Averages;
+	ssValue >> OutputVoltage;
+	ssValue >> OutputCurrent;
+	ssValue >> InputVoltage;
+	ssValue >> InputCurrent;
+	return(rval);
+}
+void VictronOrionXS::NormalizeTime(granularity type)
+{
+	if (type == day)
+		Time = (Time / DAY_SAMPLE) * DAY_SAMPLE;
+	else if (type == week)
+		Time = (Time / WEEK_SAMPLE) * WEEK_SAMPLE;
+	else if (type == month)
+		Time = (Time / MONTH_SAMPLE) * MONTH_SAMPLE;
+	else if (type == year)
+	{
+		struct tm UTC;
+		if (0 != localtime_r(&Time, &UTC))
+		{
+			UTC.tm_hour = 0;
+			UTC.tm_min = 0;
+			UTC.tm_sec = 0;
+			Time = mktime(&UTC);
+		}
+	}
+}
+VictronOrionXS::granularity VictronOrionXS::GetTimeGranularity(void) const
+{
+	granularity rval = granularity::day;
+	struct tm UTC;
+	if (0 != localtime_r(&Time, &UTC))
+	{
+		//if (((UTC.tm_hour == 0) && (UTC.tm_min == 0)) || ((UTC.tm_hour == 23) && (UTC.tm_min == 0) && (UTC.tm_isdst == 1)))
+		if ((UTC.tm_hour == 0) && (UTC.tm_min == 0))
+			rval = granularity::year;
+		else if ((UTC.tm_hour % 2 == 0) && (UTC.tm_min == 0))
+			rval = granularity::month;
+		else if ((UTC.tm_min == 0) || (UTC.tm_min == 30))
+			rval = granularity::week;
+	}
+	return(rval);
+}
+VictronOrionXS& VictronOrionXS::operator +=(const VictronOrionXS& b)
+{
+	if (b.IsValid())
+	{
+		Time = std::max(Time, b.Time); // Use the maximum time (newest time)
+		OutputVoltage = ((OutputVoltage * Averages) + (b.OutputVoltage * b.Averages)) / (Averages + b.Averages);
+		OutputCurrent = ((OutputCurrent * Averages) + (b.OutputCurrent * b.Averages)) / (Averages + b.Averages);
+		InputVoltage = ((InputVoltage * Averages) + (b.InputVoltage * b.Averages)) / (Averages + b.Averages);
+		InputCurrent = ((InputCurrent * Averages) + (b.InputCurrent * b.Averages)) / (Averages + b.Averages);
+		Averages += b.Averages; // existing average + new average
+	}
+	return(*this);
+}
+/////////////////////////////////////////////////////////////////////////////
 std::map<bdaddr_t, std::vector<VictronSmartLithium>> VictronSmartLithiumMRTGLogs; // memory map of BT addresses and vector structure similar to MRTG Log Files
+std::map<bdaddr_t, std::vector<VictronOrionXS>> VictronOrionXSMRTGLogs; // memory map of BT addresses and vector structure similar to MRTG Log Files
 std::map<bdaddr_t, std::string> VictronNames;
 void UpdateMRTGData(const bdaddr_t& TheAddress, VictronSmartLithium& TheValue)
 {
@@ -1665,47 +1816,68 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 																ret.first->second.push(ssLogEntry.str());	// puts the measurement in the queue to be written to the log file
 																//UpdateMRTGData(localBTAddress, localTemp);	// puts the measurement in the fake MRTG data structure
 																//GoveeLastDownload.insert(std::pair<bdaddr_t, time_t>(localBTAddress, 0));	// Makes sure the Bluetooth Address is in the list to get downloaded historical data
-																VictronSmartLithium localLithium;
-																if (localLithium.ReadManufacturerData(ManufacturerData, TimeNow))
-																	UpdateMRTGData(dbusBTAddress, localLithium);	// puts the measurement in the fake MRTG data structure
-																if (ConsoleVerbosity > 0)
+																if (ManufacturerData[4] == 0x01) // Solar Charger
 																{
-																	VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data()+8);
-																	ssOutput << std::dec;
-																	if (ManufacturerData[4] == 0x01) // Solar Charger
+																	if (ConsoleVerbosity > 0)
 																	{
+																		VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data() + 8);
+																		ssOutput << std::dec;
 																		ssOutput << " (Solar)";
 																		ssOutput << " battery_current:" << float(ExtraDataPtr->SolarCharger.battery_current) * 0.01 << "V";
 																		ssOutput << " battery_voltage:" << float(ExtraDataPtr->SolarCharger.battery_voltage) * 0.01 << "V";
 																		ssOutput << " load_current:" << float(ExtraDataPtr->SolarCharger.load_current) * 0.01 << "V";
 																	}
-																	if (ManufacturerData[4] == 0x04) // DC/DC converter
+																}
+																else if (ManufacturerData[4] == 0x04) // DC/DC converter
+																{
+																	if (ConsoleVerbosity > 0)
 																	{
+																		VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data() + 8);
+																		ssOutput << std::dec;
 																		ssOutput << " (DC/DC)";
 																		ssOutput << " input_voltage:" << float(ExtraDataPtr->DCDCConverter.input_voltage) * 0.01 + 2.60 << "V";
 																		ssOutput << " output_voltage:" << float(ExtraDataPtr->DCDCConverter.output_voltage) * 0.01 + 2.60 << "V";
 																	}
-																	if (ManufacturerData[4] == 0x05) // SmartLithium
+																}
+																else if (ManufacturerData[4] == 0x05) // SmartLithium
+																{
+																	VictronSmartLithium local;
+																	if (local.ReadManufacturerData(ManufacturerData, TimeNow))
 																	{
-																		if (localLithium.IsValid())
-																			ssOutput << localLithium.WriteConsole();
-																		else
-																		{
-																			ssOutput << " (SmartLithium)";
-																			ssOutput << " cell_1:" << float(ExtraDataPtr->SmartLithium.cell_1) * 0.01 + 2.60 << "V";
-																			ssOutput << " cell_2:" << float(ExtraDataPtr->SmartLithium.cell_2) * 0.01 + 2.60 << "V";
-																			ssOutput << " cell_3:" << float(ExtraDataPtr->SmartLithium.cell_3) * 0.01 + 2.60 << "V";
-																			ssOutput << " cell_4:" << float(ExtraDataPtr->SmartLithium.cell_4) * 0.01 + 2.60 << "V";
-																			ssOutput << " cell_5:" << float(ExtraDataPtr->SmartLithium.cell_5) * 0.01 + 2.60 << "V";
-																			ssOutput << " cell_6:" << float(ExtraDataPtr->SmartLithium.cell_6) * 0.01 + 2.60 << "V";
-																			ssOutput << " cell_7:" << float(ExtraDataPtr->SmartLithium.cell_7) * 0.01 + 2.60 << "V";
-																			ssOutput << " cell_8:" << float(ExtraDataPtr->SmartLithium.cell_8) * 0.01 + 2.60 << "V";
-																			ssOutput << " battery_voltage:" << float(ExtraDataPtr->SmartLithium.battery_voltage) * 0.01 << "V";
-																			ssOutput << " battery_temperature:" << ExtraDataPtr->SmartLithium.battery_temperature - 40 << "\u00B0" << "C";
-																		}
+																		UpdateMRTGData(dbusBTAddress, local);	// puts the measurement in the fake MRTG data structure
+																		if (ConsoleVerbosity > 0)
+																			ssOutput << local.WriteConsole();
 																	}
-																	if (ManufacturerData[4] == 0x0f) // Orion XS DC/DC converter
+																	else if (ConsoleVerbosity > 0)
 																	{
+																		VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data() + 8);
+																		ssOutput << std::dec;
+																		ssOutput << " (SmartLithium)";
+																		ssOutput << " cell_1:" << float(ExtraDataPtr->SmartLithium.cell_1) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_2:" << float(ExtraDataPtr->SmartLithium.cell_2) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_3:" << float(ExtraDataPtr->SmartLithium.cell_3) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_4:" << float(ExtraDataPtr->SmartLithium.cell_4) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_5:" << float(ExtraDataPtr->SmartLithium.cell_5) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_6:" << float(ExtraDataPtr->SmartLithium.cell_6) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_7:" << float(ExtraDataPtr->SmartLithium.cell_7) * 0.01 + 2.60 << "V";
+																		ssOutput << " cell_8:" << float(ExtraDataPtr->SmartLithium.cell_8) * 0.01 + 2.60 << "V";
+																		ssOutput << " battery_voltage:" << float(ExtraDataPtr->SmartLithium.battery_voltage) * 0.01 << "V";
+																		ssOutput << " battery_temperature:" << ExtraDataPtr->SmartLithium.battery_temperature - 40 << "\u00B0" << "C";
+																	}
+																}
+																else if (ManufacturerData[4] == 0x0F) // OrionXS
+																{
+																	VictronOrionXS local;
+																	if (local.ReadManufacturerData(ManufacturerData, TimeNow))
+																	{
+																		//UpdateMRTGData(dbusBTAddress, local);	// puts the measurement in the fake MRTG data structure
+																		if (ConsoleVerbosity > 0)
+																			ssOutput << local.WriteConsole();
+																	}
+																	else if (ConsoleVerbosity > 0)
+																	{
+																		VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data() + 8);
+																		ssOutput << std::dec;
 																		ssOutput << " (Orion XS)";
 																		ssOutput << " output_voltage:" << float(ExtraDataPtr->OrionXS.output_voltage) * 0.01 << "V";
 																		ssOutput << " output_current:" << float(ExtraDataPtr->OrionXS.output_current) * 0.01 << "A";
