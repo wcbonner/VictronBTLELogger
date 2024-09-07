@@ -906,6 +906,7 @@ VictronSmartLithium& VictronSmartLithium::operator +=(const VictronSmartLithium&
 }
 /////////////////////////////////////////////////////////////////////////////
 std::map<bdaddr_t, std::vector<VictronSmartLithium>> VictronMRTGLogs; // memory map of BT addresses and vector structure similar to MRTG Log Files
+std::map<bdaddr_t, std::string> VictronNames;
 void UpdateMRTGData(const bdaddr_t& TheAddress, VictronSmartLithium& TheValue)
 {
 	std::vector<VictronSmartLithium> foo;
@@ -1338,8 +1339,8 @@ void WriteAllSVG()
 		for (auto pos = btAddress.find(':'); pos != std::string::npos; pos = btAddress.find(':'))
 			btAddress.erase(pos, 1);
 		std::string ssTitle(btAddress);
-		//if (GoveeBluetoothTitles.find(TheAddress) != GoveeBluetoothTitles.end())
-		//	ssTitle = GoveeBluetoothTitles.find(TheAddress)->second;
+		if (VictronNames.find(TheAddress) != VictronNames.end())
+			ssTitle = VictronNames.find(TheAddress)->second + " (" + btAddress + ")";
 		std::filesystem::path OutputPath;
 		std::ostringstream OutputFilename;
 		OutputFilename.str("");
@@ -1585,7 +1586,11 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 				if ((DBUS_TYPE_STRING == dbus_message_Type) || (DBUS_TYPE_OBJECT_PATH == dbus_message_Type))
 				{
 					dbus_message_iter_get_basic(&variant_iter, &value);
-					ssOutput << "[" << timeToISO8601(TimeNow, true) << "] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << value.str << std::endl;
+					std::string Name(value.str);
+					auto ElementInserted = VictronNames.insert(std::make_pair(dbusBTAddress, Name)); // Either get the existing record or insert a new one
+					if (!ElementInserted.second) // true if inserted, false if already exists
+						ElementInserted.first->second = Name;
+					ssOutput << "[" << timeToISO8601(TimeNow, true) << "] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << Name << std::endl;
 				}
 			}
 			else if (!Key.compare("UUIDs"))
