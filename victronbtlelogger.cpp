@@ -1060,11 +1060,12 @@ VictronOrionXS& VictronOrionXS::operator +=(const VictronOrionXS& b)
 std::map<bdaddr_t, std::vector<VictronSmartLithium>> VictronSmartLithiumMRTGLogs; // memory map of BT addresses and vector structure similar to MRTG Log Files
 std::map<bdaddr_t, std::vector<VictronOrionXS>> VictronOrionXSMRTGLogs; // memory map of BT addresses and vector structure similar to MRTG Log Files
 std::map<bdaddr_t, std::string> VictronNames;
-void UpdateMRTGData(const bdaddr_t& TheAddress, VictronSmartLithium& TheValue)
+template <typename VictronType, typename MRTGMap>
+void UpdateMRTGData(const bdaddr_t& TheAddress, VictronType& TheValue, MRTGMap & TheMap)
 {
-	std::vector<VictronSmartLithium> foo;
-	auto ret = VictronSmartLithiumMRTGLogs.insert(std::pair<bdaddr_t, std::vector<VictronSmartLithium>>(TheAddress, foo));
-	std::vector<VictronSmartLithium>& FakeMRTGFile = ret.first->second;
+	std::vector<VictronType> foo;
+	auto ret = TheMap.insert(std::pair<bdaddr_t, std::vector<VictronType>>(TheAddress, foo));
+	std::vector<VictronType>& FakeMRTGFile = ret.first->second;
 	if (FakeMRTGFile.empty())
 	{
 		FakeMRTGFile.resize(2 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT + YEAR_COUNT);
@@ -1103,45 +1104,45 @@ void UpdateMRTGData(const bdaddr_t& TheAddress, VictronSmartLithium& TheValue)
 		// shuffle all the day samples toward the end
 		std::copy_backward(DaySampleFirst, DaySampleLast - 1, DaySampleLast);
 		*DaySampleFirst = FakeMRTGFile[1];
-		DaySampleFirst->NormalizeTime(VictronSmartLithium::granularity::day);
+		DaySampleFirst->NormalizeTime(VictronType::granularity::day);
 		if (difftime(DaySampleFirst->Time, (DaySampleFirst + 1)->Time) > DAY_SAMPLE)
 			DaySampleFirst->Time = (DaySampleFirst + 1)->Time + DAY_SAMPLE;
-		if (DaySampleFirst->GetTimeGranularity() == VictronSmartLithium::granularity::year)
+		if (DaySampleFirst->GetTimeGranularity() == VictronType::granularity::year)
 		{
 			if (ConsoleVerbosity > 2)
 				std::cout << "[" << getTimeISO8601() << "] shuffling year " << timeToExcelLocal(DaySampleFirst->Time) << " > " << timeToExcelLocal(YearSampleFirst->Time) << std::endl;
 			// shuffle all the year samples toward the end
 			std::copy_backward(YearSampleFirst, YearSampleLast - 1, YearSampleLast);
-			*YearSampleFirst = VictronSmartLithium();
+			*YearSampleFirst = VictronType();
 			for (auto iter = DaySampleFirst; (iter->IsValid() && ((iter - DaySampleFirst) < (12 * 24))); iter++) // One Day of day samples
 				*YearSampleFirst += *iter;
 		}
-		if ((DaySampleFirst->GetTimeGranularity() == VictronSmartLithium::granularity::year) ||
-			(DaySampleFirst->GetTimeGranularity() == VictronSmartLithium::granularity::month))
+		if ((DaySampleFirst->GetTimeGranularity() == VictronType::granularity::year) ||
+			(DaySampleFirst->GetTimeGranularity() == VictronType::granularity::month))
 		{
 			if (ConsoleVerbosity > 2)
 				std::cout << "[" << getTimeISO8601() << "] shuffling month " << timeToExcelLocal(DaySampleFirst->Time) << std::endl;
 			// shuffle all the month samples toward the end
 			std::copy_backward(MonthSampleFirst, MonthSampleLast - 1, MonthSampleLast);
-			*MonthSampleFirst = VictronSmartLithium();
+			*MonthSampleFirst = VictronType();
 			for (auto iter = DaySampleFirst; (iter->IsValid() && ((iter - DaySampleFirst) < (12 * 2))); iter++) // two hours of day samples
 				*MonthSampleFirst += *iter;
 		}
-		if ((DaySampleFirst->GetTimeGranularity() == VictronSmartLithium::granularity::year) ||
-			(DaySampleFirst->GetTimeGranularity() == VictronSmartLithium::granularity::month) ||
-			(DaySampleFirst->GetTimeGranularity() == VictronSmartLithium::granularity::week))
+		if ((DaySampleFirst->GetTimeGranularity() == VictronType::granularity::year) ||
+			(DaySampleFirst->GetTimeGranularity() == VictronType::granularity::month) ||
+			(DaySampleFirst->GetTimeGranularity() == VictronType::granularity::week))
 		{
 			if (ConsoleVerbosity > 2)
 				std::cout << "[" << getTimeISO8601() << "] shuffling week " << timeToExcelLocal(DaySampleFirst->Time) << std::endl;
 			// shuffle all the month samples toward the end
 			std::copy_backward(WeekSampleFirst, WeekSampleLast - 1, WeekSampleLast);
-			*WeekSampleFirst = VictronSmartLithium();
+			*WeekSampleFirst = VictronType();
 			for (auto iter = DaySampleFirst; (iter->IsValid() && ((iter - DaySampleFirst) < 6)); iter++) // Half an hour of day samples
 				*WeekSampleFirst += *iter;
 		}
 	}
 	if (ZeroAccumulator)
-		FakeMRTGFile[1] = VictronSmartLithium();
+		FakeMRTGFile[1] = VictronType();
 }
 enum class GraphType { daily, weekly, monthly, yearly };
 // Returns a curated vector of data points specific to the requested graph type from the internal memory structure map keyed off the Bluetooth address.
@@ -1519,7 +1520,13 @@ void ReadLoggedData(const std::filesystem::path& filename)
 				{
 					VictronSmartLithium TheValue(*iter);
 					if (TheValue.IsValid())
-						UpdateMRTGData(TheBlueToothAddress, TheValue);
+						UpdateMRTGData(TheBlueToothAddress, TheValue, VictronSmartLithiumMRTGLogs);
+					else
+					{
+						VictronOrionXS TheValue(*iter);
+						if (TheValue.IsValid())
+							UpdateMRTGData(TheBlueToothAddress, TheValue, VictronOrionXSMRTGLogs);
+					}
 				}
 			}
 		}
@@ -1844,7 +1851,7 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 																	VictronSmartLithium local;
 																	if (local.ReadManufacturerData(ManufacturerData, TimeNow))
 																	{
-																		UpdateMRTGData(dbusBTAddress, local);	// puts the measurement in the fake MRTG data structure
+																		UpdateMRTGData(dbusBTAddress, local, VictronSmartLithiumMRTGLogs);	// puts the measurement in the fake MRTG data structure
 																		if (ConsoleVerbosity > 0)
 																			ssOutput << local.WriteConsole();
 																	}
@@ -1870,7 +1877,7 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 																	VictronOrionXS local;
 																	if (local.ReadManufacturerData(ManufacturerData, TimeNow))
 																	{
-																		//UpdateMRTGData(dbusBTAddress, local);	// puts the measurement in the fake MRTG data structure
+																		UpdateMRTGData(dbusBTAddress, local, VictronOrionXSMRTGLogs);	// puts the measurement in the fake MRTG data structure
 																		if (ConsoleVerbosity > 0)
 																			ssOutput << local.WriteConsole();
 																	}
