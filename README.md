@@ -2,6 +2,11 @@
 
 The purpose of this program is to listen to Victron Bluetooth LE advertisments, decrypt and log them, and create SVG graphs of the battery voltage and temperature in the style of https://github.com/wcbonner/GoveeBTTempLogger
 
+I've currently got it graphiong the two items I'm running most related to my battery situation. SmartLithium Batteries and Orion XS DC/DC Charger.
+
+## Example SVG Output
+![Image](./victron-CEA5D77BCD81-day.svg) ![Image](./victron-D3D19054EBF0-day.svg)
+
 ## Useful starting links
 
 https://community.victronenergy.com/questions/187303/victron-bluetooth-advertising-protocol.html
