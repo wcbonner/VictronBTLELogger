@@ -1,8 +1,8 @@
 # VictronBTLELogger
 
-The purpose of this program is to listen to Victron Bluetooth LE advertisments, decrypt and log them, and create SVG graphs of the battery voltage and temperature in the style of https://github.com/wcbonner/GoveeBTTempLogger
+Recieve Victron Bluetooth LE advertisments. Decrypt and log data by bluetooth address. Create SVG graphs of battery voltage and temperature in the style of https://github.com/wcbonner/GoveeBTTempLogger
 
-I've currently got it graphing the two items I'm running most related to my battery situation. SmartLithium Batteries and Orion XS DC/DC Charger.
+Currently graphing SmartLithium Battery and Orion XS DC/DC Charger.
 
 ## Example SVG Output
 ![Image](./victron-CEA5D77BCD81-day.svg) ![Image](./victron-D3D19054EBF0-day.svg)
@@ -16,27 +16,58 @@ https://www.victronenergy.com/live/open_source:start
 https://github.com/keshavdv/victron-ble
 
 ## DBus
-I'm using the same dbus connection style to BlueZ I recently learned in my Govee project. This project does not link to bluetooth libraries directly. I've duplicated a couple of functions for handling bluetooth address structures safely.
+I'm using the same dbus connection style to BlueZ I recently learned in my [Govee project](/wcbonner/GoveeBTTempLogger). This project does not link to bluetooth libraries directly. I've duplicated a couple of functions for handling bluetooth address structures safely.
 
 ## OpenSSL
-I had to learn to use OpenSSL to decrypt the AES CTR blocks that are being sent by Victron. Writing it up is a good idea. 
+I had to learn to use OpenSSL to decrypt the AES CTR blocks that are being sent by Victron. This was very quick and dirty, but works.
+```
+#include <openssl/evp.h> // sudo apt install libssl-dev
+
+uint8_t DecryptedData[32] { 0 };
+if (sizeof(DecryptedData) >= (ManufacturerData.size() - 8)) // simple check to make sure we don't buffer overflow
+{
+  EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+  if (ctx != 0)
+  {
+    uint8_t InitializationVector[16] { ManufacturerData[5], ManufacturerData[6], 0}; // The first two bytes are assigned, the rest of the 16 are padded with zero
+
+    if (1 == EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, EncryptionKey.data(), InitializationVector))
+    {
+      int len(0);
+      if (1 == EVP_DecryptUpdate(ctx, DecryptedData, &len, ManufacturerData.data() + 8, ManufacturerData.size() - 8))
+      {
+        if (1 == EVP_DecryptFinal_ex(ctx, DecryptedData + len, &len))
+        {
+          // We have decrypted data!
+          ManufacturerData[5] = ManufacturerData[6] = ManufacturerData[7] = 0; // I'm writing a zero here to remind myself I've decoded the data already
+          for (auto index = 0; index < ManufacturerData.size() - 8; index++) // copy the decoded data over the original data
+            ManufacturerData[index+8] = DecryptedData[index];
+        }
+      }
+    }
+    EVP_CIPHER_CTX_free(ctx);
+  }
+}
+```
 
 ## Victron Extra Manufacturer Data
-Victron confuses details by referring to extra data. 
-Decoding the extra manufacturer data, it's all manufacturer data at the bluetooth level. Victron bit packs the extra data before encrypting it using the AES CTR method.
+Victron refers to Extra Manufacturer Data.
+It's all manufacturer data at the bluetooth level.
+What Victron refers to as "Extra Manufacturer Data" starts at the 8th byte of the manufacturer data, and runs to the end of the Bluetooth Manufacturer Data record.
+Decoding the extra manufacturer data, Victron bit packs the extra data before encrypting it using the AES CTR method.
 
 ### Manufacturer Data
 | Start Byte | Byte Count | Meaning | Remark |
 | --- | --- | --- | --- |
 | 0 | 1 | Manufacturer Data Record type | 0x10=Product Advertisement |
-| 1 | 2 | model id | --- |
-| 3 | 1 | read out type 0xA0 | --- |
+| 1 | 2 | model id | |
+| 3 | 1 | read out type | 0xA0 |
 | 4 | 1 | record type | Used to decide which bit packed structure to decode the extra data. e.g. 0x01=[Solar Charger](#solar-charger-0x01) 0x05=[SmartLithium](#smartlithium-0x05)|
-| 5 | 2 | AES Initialization Vector | --- |
-| 7 | 1 | First Byte of AES Decryption Key | --- |
-| 8 | ? | First Byte of encrypted data | extra manufacturer data |
+| 5 | 2 | AES Initialization Vector | two bytes, pad with 14 more 0x00 values to have a 16 byte array. sometimes called "nonce" |
+| 7 | 1 | First Byte of AES Decryption Key | If this doesn't match the stored key, skip attempting to decode |
+| 8 | ? | First Byte of encrypted data | Extra Manufacturer Data |
 
-## Victron Data Structures (extra manufacturer data)
+## Victron Data Structures (Extra Manufacturer Data)
 
 ### Solar Charger (0x01)
 | Start Bit | Nr of Bits | Meaning | Units | Range | NA Value | Remark |
