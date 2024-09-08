@@ -166,14 +166,14 @@ Decoding the extra manufacturer data, Victron bit packs the extra data before en
 | --- | --- | --- | --- | --- | --- | --- |
 | 32 | 32 | BMS flags | | 0..0xFFFFFFFF | | VE_REG_BMS_FLAGs |
 | 64 | 16 | SmartLithium error | | 0..0xFFFF | | VE_REG_SMART_LITHIUM_ERROR_FLAGS |
-| 80 | 7 | Cell 1 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
-| 87 | 7 | Cell 2 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
-| 94 | 7 | Cell 3 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
-| 101 | 7 | Cell 4 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
-| 108 | 7 | Cell 5 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
-| 115 | 7 | Cell 6 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
-| 122 | 7 | Cell 7 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
-| 129 | 7 | Cell 8 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
+| 80 | 7 | Cell 1 | 0.01V | 2.60..3.86 V | 0x7F | VE_REG_BATTERY_CELL_VOLTAGE* |
+| 87 | 7 | Cell 2 | 0.01V | 2.60..3.86 V | 0x7F | VE_REG_BATTERY_CELL_VOLTAGE* |
+| 94 | 7 | Cell 3 | 0.01V | 2.60..3.86 V | 0x7F | VE_REG_BATTERY_CELL_VOLTAGE* |
+| 101 | 7 | Cell 4 | 0.01V | 2.60..3.86 V | 0x7F | VE_REG_BATTERY_CELL_VOLTAGE* |
+| 108 | 7 | Cell 5 | 0.01V | 2.60..3.86 V | 0x7F | VE_REG_BATTERY_CELL_VOLTAGE* |
+| 115 | 7 | Cell 6 | 0.01V | 2.60..3.86 V | 0x7F | VE_REG_BATTERY_CELL_VOLTAGE* |
+| 122 | 7 | Cell 7 | 0.01V | 2.60..3.86 V | 0x7F | VE_REG_BATTERY_CELL_VOLTAGE* |
+| 129 | 7 | Cell 8 | 0.01V | 2.60..3.86 V | 0x7F | VE_REG_BATTERY_CELL_VOLTAGE* |
 | 136 | 12 | Battery voltage | 0.01V | 0..40.94 V | 0x0FFF | VE_REG_DC_CHANNEL1_VOLTAGE |
 | 148 | 4 | Balancer status | | 0..15 | 0x0F | VE_REG_BALANCER_STATUS |
 | 152 | 7 | Battery temperature | 1°C | -40..86 °C | 0x7F | VE_REG_BAT_TEMPERATURE Temperature = Record value - 40 |
