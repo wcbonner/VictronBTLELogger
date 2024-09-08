@@ -105,8 +105,8 @@ Decoding the extra manufacturer data, it's all manufacturer data at the bluetoot
 | 0 | 8 | Device State |  | 0..0xFF |  | VE_REG_DEVICE_STATE |
 | 8 | 8 | Error Code |  | 0..0xFF |  | VE_REG_CHR_ERROR_CODE |
 | 16 | 16 | Output Voltage | 0.01V | -327.68..327.66 V | 0x7FFF | VE_REG_DC_CHANNEL1_VOLTAGE |
-| 32 | 16 | Output Current | 0.01V | -327.68..327.66 A | 0x7FFF | VE_REG_DC_CHANNEL1_CURRENT |
+| 32 | 16 | Output Current | 0.01A | -327.68..327.66 A | 0x7FFF | VE_REG_DC_CHANNEL1_CURRENT |
 | 48 | 16 | Input Voltage | 0.01V | 0..655.34 V | 0xFFFF | VE_REG_DC_INPUT_VOLTAGE |
-| 64 | 16 | Input Current | 0.01V | 0..655.34 A | 0xFFFF | VE_REG_DC_INPUT_CURRENT |
+| 64 | 16 | Input Current | 0.01A | 0..655.34 A | 0xFFFF | VE_REG_DC_INPUT_CURRENT |
 | 80 | 32 | Device Off Reason |  | 0..429496728 |  | VE_REG_DEVICE_OFF_REASON_2 |
 | 112 | 16 | Unused |  |  |  |  |
