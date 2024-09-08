@@ -17,6 +17,76 @@ https://github.com/keshavdv/victron-ble
 
 ## DBus
 I'm using the same dbus connection style to BlueZ I recently learned in my [Govee project](/wcbonner/GoveeBTTempLogger). This project does not link to bluetooth libraries directly. I've duplicated a couple of functions for handling bluetooth address structures safely.
+```
+#include <iomanip>
+#include <iostream>
+#include <regex>
+
+#ifndef bdaddr_t
+  /* BD Address */
+  typedef struct {
+    uint8_t b[6];
+  } __attribute__((packed)) bdaddr_t;
+#endif // !bdaddr_t
+bool operator <(const bdaddr_t& a, const bdaddr_t& b)
+{
+  unsigned long long A = a.b[5];
+  A = A << 8 | a.b[4];
+  A = A << 8 | a.b[3];
+  A = A << 8 | a.b[2];
+  A = A << 8 | a.b[1];
+  A = A << 8 | a.b[0];
+  unsigned long long B = b.b[5];
+  B = B << 8 | b.b[4];
+  B = B << 8 | b.b[3];
+  B = B << 8 | b.b[2];
+  B = B << 8 | b.b[1];
+  B = B << 8 | b.b[0];
+  return(A < B);
+}
+bool operator ==(const bdaddr_t& a, const bdaddr_t& b)
+{
+  unsigned long long A = a.b[5];
+  A = A << 8 | a.b[4];
+  A = A << 8 | a.b[3];
+  A = A << 8 | a.b[2];
+  A = A << 8 | a.b[1];
+  A = A << 8 | a.b[0];
+  unsigned long long B = b.b[5];
+  B = B << 8 | b.b[4];
+  B = B << 8 | b.b[3];
+  B = B << 8 | b.b[2];
+  B = B << 8 | b.b[1];
+  B = B << 8 | b.b[0];
+  return(A == B);
+}
+std::string ba2string(const bdaddr_t& TheBlueToothAddress)
+{
+  std::ostringstream oss;
+  for (auto i = 5; i >= 0; i--)
+  {
+    oss << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(TheBlueToothAddress.b[i]);
+    if (i > 0)
+      oss << ":";
+  }
+  return (oss.str());
+}
+const std::regex BluetoothAddressRegex("((([[:xdigit:]]{2}:){5}))[[:xdigit:]]{2}");
+bdaddr_t string2ba(const std::string& TheBlueToothAddressString)
+{ 
+  bdaddr_t TheBlueToothAddress({ 0 });
+  if (std::regex_match(TheBlueToothAddressString, BluetoothAddressRegex))
+  {
+    std::stringstream ss(TheBlueToothAddressString);
+    std::string byteString;
+    int index(5);
+    // Because I've verified the string format with regex I can safely run this loop knowing it'll get 6 bytes
+    while (std::getline(ss, byteString, ':'))
+      TheBlueToothAddress.b[index--] = std::stoi(byteString, nullptr, 16);
+  }
+  return(TheBlueToothAddress); 
+}
+```
 
 ## OpenSSL
 I had to learn to use OpenSSL to decrypt the AES CTR blocks that are being sent by Victron. This was very quick and dirty, but works.
