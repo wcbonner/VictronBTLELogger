@@ -1,8 +1,8 @@
 # VictronBTLELogger
 
-The purpose of this program is to listen to Victron Bluetooth LE advertisments, decrypt and log them, and create SVG graphs of the battery voltage and temperature in the style of https://github.com/wcbonner/GoveeBTTempLogger
+Recieve Victron Bluetooth LE advertisments. Decrypt and log data by bluetooth address. Create SVG graphs of battery voltage and temperature in the style of https://github.com/wcbonner/GoveeBTTempLogger
 
-I've currently got it graphiong the two items I'm running most related to my battery situation. SmartLithium Batteries and Orion XS DC/DC Charger.
+Currently graphing SmartLithium Battery and Orion XS DC/DC Charger.
 
 ## Example SVG Output
 ![Image](./victron-CEA5D77BCD81-day.svg) ![Image](./victron-D3D19054EBF0-day.svg)
@@ -16,27 +16,128 @@ https://www.victronenergy.com/live/open_source:start
 https://github.com/keshavdv/victron-ble
 
 ## DBus
-I'm using the same dbus connection style to BlueZ I recently learned in my Govee project. This project does not link to bluetooth libraries directly. I've duplicated a couple of functions for handling bluetooth address structures safely.
+I'm using the same dbus connection style to BlueZ I recently learned in my [Govee project](/wcbonner/GoveeBTTempLogger). This project does not link to bluetooth libraries directly. I've duplicated a couple of functions for handling bluetooth address structures safely.
+```
+#include <iomanip>
+#include <iostream>
+#include <regex>
+
+#ifndef bdaddr_t
+  /* BD Address */
+  typedef struct {
+    uint8_t b[6];
+  } __attribute__((packed)) bdaddr_t;
+#endif // !bdaddr_t
+bool operator <(const bdaddr_t& a, const bdaddr_t& b)
+{
+  unsigned long long A = a.b[5];
+  A = A << 8 | a.b[4];
+  A = A << 8 | a.b[3];
+  A = A << 8 | a.b[2];
+  A = A << 8 | a.b[1];
+  A = A << 8 | a.b[0];
+  unsigned long long B = b.b[5];
+  B = B << 8 | b.b[4];
+  B = B << 8 | b.b[3];
+  B = B << 8 | b.b[2];
+  B = B << 8 | b.b[1];
+  B = B << 8 | b.b[0];
+  return(A < B);
+}
+bool operator ==(const bdaddr_t& a, const bdaddr_t& b)
+{
+  unsigned long long A = a.b[5];
+  A = A << 8 | a.b[4];
+  A = A << 8 | a.b[3];
+  A = A << 8 | a.b[2];
+  A = A << 8 | a.b[1];
+  A = A << 8 | a.b[0];
+  unsigned long long B = b.b[5];
+  B = B << 8 | b.b[4];
+  B = B << 8 | b.b[3];
+  B = B << 8 | b.b[2];
+  B = B << 8 | b.b[1];
+  B = B << 8 | b.b[0];
+  return(A == B);
+}
+std::string ba2string(const bdaddr_t& TheBlueToothAddress)
+{
+  std::ostringstream oss;
+  for (auto i = 5; i >= 0; i--)
+  {
+    oss << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(TheBlueToothAddress.b[i]);
+    if (i > 0)
+      oss << ":";
+  }
+  return (oss.str());
+}
+const std::regex BluetoothAddressRegex("((([[:xdigit:]]{2}:){5}))[[:xdigit:]]{2}");
+bdaddr_t string2ba(const std::string& TheBlueToothAddressString)
+{ 
+  bdaddr_t TheBlueToothAddress({ 0 });
+  if (std::regex_match(TheBlueToothAddressString, BluetoothAddressRegex))
+  {
+    std::stringstream ss(TheBlueToothAddressString);
+    std::string byteString;
+    int index(5);
+    // Because I've verified the string format with regex I can safely run this loop knowing it'll get 6 bytes
+    while (std::getline(ss, byteString, ':'))
+      TheBlueToothAddress.b[index--] = std::stoi(byteString, nullptr, 16);
+  }
+  return(TheBlueToothAddress); 
+}
+```
 
 ## OpenSSL
-I had to learn to use OpenSSL to decrypt the AES CTR blocks that are being sent by Victron. Writing it up is a good idea. 
+I had to learn to use OpenSSL to decrypt the AES CTR blocks that are being sent by Victron. This was very quick and dirty, but works.
+```
+#include <openssl/evp.h> // sudo apt install libssl-dev
+
+uint8_t DecryptedData[32] { 0 };
+if (sizeof(DecryptedData) >= (ManufacturerData.size() - 8)) // simple check to make sure we don't buffer overflow
+{
+  EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+  if (ctx != 0)
+  {
+    uint8_t InitializationVector[16] { ManufacturerData[5], ManufacturerData[6], 0}; // The first two bytes are assigned, the rest of the 16 are padded with zero
+
+    if (1 == EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, EncryptionKey.data(), InitializationVector))
+    {
+      int len(0);
+      if (1 == EVP_DecryptUpdate(ctx, DecryptedData, &len, ManufacturerData.data() + 8, ManufacturerData.size() - 8))
+      {
+        if (1 == EVP_DecryptFinal_ex(ctx, DecryptedData + len, &len))
+        {
+          // We have decrypted data!
+          ManufacturerData[5] = ManufacturerData[6] = ManufacturerData[7] = 0; // I'm writing a zero here to remind myself I've decoded the data already
+          for (auto index = 0; index < ManufacturerData.size() - 8; index++) // copy the decoded data over the original data
+            ManufacturerData[index+8] = DecryptedData[index];
+        }
+      }
+    }
+    EVP_CIPHER_CTX_free(ctx);
+  }
+}
+```
 
 ## Victron Extra Manufacturer Data
-Victron confuses details by referring to extra data. 
-Decoding the extra manufacturer data, it's all manufacturer data at the bluetooth level. Victron bit packs the extra data before encrypting it using the AES CTR method.
+Victron refers to Extra Manufacturer Data.
+It's all manufacturer data at the bluetooth level.
+What Victron refers to as "Extra Manufacturer Data" starts at the 8th byte of the manufacturer data, and runs to the end of the Bluetooth Manufacturer Data record.
+Decoding the extra manufacturer data, Victron bit packs the extra data before encrypting it using the AES CTR method.
 
 ### Manufacturer Data
 | Start Byte | Byte Count | Meaning | Remark |
 | --- | --- | --- | --- |
 | 0 | 1 | Manufacturer Data Record type | 0x10=Product Advertisement |
-| 1 | 2 | model id |  |
-| 3 | 1 | read out type 0xA0 |  |
+| 1 | 2 | model id | |
+| 3 | 1 | read out type | 0xA0 |
 | 4 | 1 | record type | Used to decide which bit packed structure to decode the extra data. e.g. 0x01=[Solar Charger](#solar-charger-0x01) 0x05=[SmartLithium](#smartlithium-0x05)|
-| 5 | 2 | AES Initialization Vector |  |
-| 7 | 1 | First Byte of AES Decryption Key |  |
-| 8 | ? | First Byte of encrypted data | extra manufacturer data |
+| 5 | 2 | AES Initialization Vector | two bytes, pad with 14 more 0x00 values to have a 16 byte array. sometimes called "nonce" |
+| 7 | 1 | First Byte of AES Decryption Key | If this doesn't match the stored key, skip attempting to decode |
+| 8 | ? | First Byte of encrypted data | Extra Manufacturer Data |
 
-## Victron Data Structures (extra manufacturer data)
+## Victron Data Structures (Extra Manufacturer Data)
 
 ### Solar Charger (0x01)
 | Start Bit | Nr of Bits | Meaning | Units | Range | NA Value | Remark |
@@ -89,14 +190,14 @@ Decoding the extra manufacturer data, it's all manufacturer data at the bluetoot
 | --- | --- | --- | --- | --- | --- | --- |
 | 32 | 32 | BMS flags | | 0..0xFFFFFFFF | | VE_REG_BMS_FLAGs |
 | 64 | 16 | SmartLithium error | | 0..0xFFFF | | VE_REG_SMART_LITHIUM_ERROR_FLAGS |
-| 80 | 7 | Cell 1 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
-| 87 | 7 | Cell 2 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
-| 94 | 7 | Cell 3 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
-| 101 | 7 | Cell 4 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
-| 108 | 7 | Cell 5 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
-| 115 | 7 | Cell 6 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
-| 122 | 7 | Cell 7 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
-| 129 | 7 | Cell 8 | 0.01V | 2.60..3.86 V | 0xFF | VE_REG_BATTERY_CELL_VOLTAGE* |
+| 80 | 7 | Cell 1 | 0.01V | 2.60..3.86 V | 0x7F | VE_REG_BATTERY_CELL_VOLTAGE* |
+| 87 | 7 | Cell 2 | 0.01V | 2.60..3.86 V | 0x7F | VE_REG_BATTERY_CELL_VOLTAGE* |
+| 94 | 7 | Cell 3 | 0.01V | 2.60..3.86 V | 0x7F | VE_REG_BATTERY_CELL_VOLTAGE* |
+| 101 | 7 | Cell 4 | 0.01V | 2.60..3.86 V | 0x7F | VE_REG_BATTERY_CELL_VOLTAGE* |
+| 108 | 7 | Cell 5 | 0.01V | 2.60..3.86 V | 0x7F | VE_REG_BATTERY_CELL_VOLTAGE* |
+| 115 | 7 | Cell 6 | 0.01V | 2.60..3.86 V | 0x7F | VE_REG_BATTERY_CELL_VOLTAGE* |
+| 122 | 7 | Cell 7 | 0.01V | 2.60..3.86 V | 0x7F | VE_REG_BATTERY_CELL_VOLTAGE* |
+| 129 | 7 | Cell 8 | 0.01V | 2.60..3.86 V | 0x7F | VE_REG_BATTERY_CELL_VOLTAGE* |
 | 136 | 12 | Battery voltage | 0.01V | 0..40.94 V | 0x0FFF | VE_REG_DC_CHANNEL1_VOLTAGE |
 | 148 | 4 | Balancer status | | 0..15 | 0x0F | VE_REG_BALANCER_STATUS |
 | 152 | 7 | Battery temperature | 1°C | -40..86 °C | 0x7F | VE_REG_BAT_TEMPERATURE Temperature = Record value - 40 |
@@ -209,8 +310,8 @@ Record layout is still to be determined and might change.
 | 0 | 8 | Device State |  | 0..0xFF |  | VE_REG_DEVICE_STATE |
 | 8 | 8 | Error Code |  | 0..0xFF |  | VE_REG_CHR_ERROR_CODE |
 | 16 | 16 | Output Voltage | 0.01V | -327.68..327.66 V | 0x7FFF | VE_REG_DC_CHANNEL1_VOLTAGE |
-| 32 | 16 | Output Current | 0.01V | -327.68..327.66 A | 0x7FFF | VE_REG_DC_CHANNEL1_CURRENT |
+| 32 | 16 | Output Current | 0.01A | -327.68..327.66 A | 0x7FFF | VE_REG_DC_CHANNEL1_CURRENT |
 | 48 | 16 | Input Voltage | 0.01V | 0..655.34 V | 0xFFFF | VE_REG_DC_INPUT_VOLTAGE |
-| 64 | 16 | Input Current | 0.01V | 0..655.34 A | 0xFFFF | VE_REG_DC_INPUT_CURRENT |
+| 64 | 16 | Input Current | 0.01A | 0..655.34 A | 0xFFFF | VE_REG_DC_INPUT_CURRENT |
 | 80 | 32 | Device Off Reason |  | 0..429496728 |  | VE_REG_DEVICE_OFF_REASON_2 |
 | 112 | 16 | Unused |  |  |  |  |
