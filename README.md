@@ -299,10 +299,28 @@ Record layout is still to be determined and might change.
 ### VE.Bus (0x0C)
 | Start Bit | Nr of Bits | Meaning | Units | Range | NA Value | Remark |
 | --- | --- | --- | --- | --- | --- | --- |
+| 32 | 8 | Device state | | 0 .. 0xFE | 0xFF | VE_REG_DEVICE_STATE |
+| 40 | 8 | VE.Bus error | | 0 .. 0xFE | 0xFF | VE_REG_VEBUS_VEBUS_ERROR |
+| 48 | 16 | Battery current | 0.1A | -3276.8 ..3276.6 A | 0x7FFF | VE_REG_DC_CHANNEL1_CURRENT |
+| 64 | 14 | Battery voltage | 0.01V | 0 .. 163.83V | 0x3FFF | VE_REG_DC_CHANNEL1_VOLTAGE |
+| 78 | 2 | Active AC in | | 0 .. 3 | 0x3 | VE_REG_AC_IN_ACTIVE 0 = AC in 1, 1 = AC in 2, 2 = Not connected, 3 = unknown |
+| 80 | 19 | Active AC in power | 1 W | -262,144 ..262,142 W | 0x3FFFF | VE_REG_AC_IN_1_REAL_POWER or VE_REG_AC_IN_2_REAL_POWER, depending on VE_REG_AC_IN_ACTIVE |
+| 99 | 19 | AC out power | 1 W | -262,144 .. 262,142 W | 0x3FFFF | VE_REG_AC_OUT_REAL_POWER |
+| 118 | 2 | Alarm 0 .. 2 | 3 | VE_REG_ALARM_NOTIFICATION (to be defined) 0 = no alarm, 1 = warning, 2 = alarm |
+| 120 | 7 | Battery temperature | 1 °C | -40 .. 86 °C | 0x7F | VE_REG_BAT_TEMPERATURE Temperature = Record value - 40 |
+| 127 | 7 | SOC | 1 % | 0 .. 126 % | 0x7F | VE_REG_SOC |
+| 134 | 26 | Unused |
 
 ### DC Energy Meter (0x0D)
 | Start Bit | Nr of Bits | Meaning | Units | Range | NA Value | Remark |
 | --- | --- | --- | --- | --- | --- | --- |
+| 32 | 16 | BMV monitor mode | | –32768 ..32767 | | VE_REG_BMV_MONITOR_MODE |
+| 48 | 16 | Battery voltage | 0.01 V | -327.68 ..327.66 V | 0x7FFF | VE_REG_DC_CHANNEL1_VOLTAGE |
+| 64 | 16 | Alarm reason | | 0 .. 0xFFFF | | VE_REG_ALARM_REASON |
+| 80 | 16 | Aux voltage Temperature | 0.01 V 0.01 K | -327.68 ..327.64 V 0 ..655.34 K | | VE_REG_DC_CHANNEL2_VOLTAGE VE_REG_BAT_TEMPERATURE |
+| 96 | 2 | Aux input | | 0 .. 3 | 0x3 | VE_REG_BMV_AUX_INPUT 0 ⇒ Aux voltage : VE_REG_DC_CHANNEL2_VOLTAGE 2 ⇒ Temperature : VE_REG_BAT_TEMPERATURE 3 ⇒ none |
+| 98 | 22 | Battery current | 0.001A | -4194 ..4194 A | 0x3FFFFF | VE_REG_DC_CHANNEL1_CURRENT_MA |
+| 120 | 40 | Unused |
 
 ### Orion XS (0x0F)
 | Start Bit | Nr of Bits | Meaning | Units | Range | NA Value | Remark |
