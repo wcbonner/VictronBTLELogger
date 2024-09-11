@@ -3,7 +3,7 @@
 
 echo "\033[36m HI I'M A POSTINST SCRIPT `date --rfc-3339='seconds'` \033[39m"
 adduser --system --ingroup www-data victronbtlelogger
-mkdir --mode 0664 --parents /var/log/victronbtlelogger /var/cache/victronbtlelogger /var/www/html/victronbtlelogger
+mkdir --mode 0775 --parents /var/log/victronbtlelogger /var/cache/victronbtlelogger /var/www/html/victronbtlelogger
 chown --recursive victronbtlelogger:www-data /var/log/victronbtlelogger /var/cache/victronbtlelogger /var/www/html/victronbtlelogger
 chmod --recursive 0664 /var/log/victronbtlelogger /var/cache/victronbtlelogger /var/www/html/victronbtlelogger
 chmod  0775 /var/log/victronbtlelogger /var/cache/victronbtlelogger /var/www/html/victronbtlelogger
