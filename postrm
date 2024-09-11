@@ -1,7 +1,7 @@
 #!/bin/sh
 # POSTRM script for victronbtlelogger
 
-echo "\033[36m HI I'M A POSTRM SCRIPT `date +"%s"` \033[39m"
+echo "\033[36m HI I'M A POSTRM SCRIPT `date --rfc-3339='seconds'` \033[39m"
 systemctl daemon-reload
 
 exit 0

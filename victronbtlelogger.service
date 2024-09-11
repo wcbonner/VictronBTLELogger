@@ -10,9 +10,8 @@ StartLimitIntervalSec=33
 Type=simple
 Restart=always
 RestartSec=30
-ExecStartPre=/bin/mkdir --parents /var/log/victronbtlelogger
-ExecStartPre=/bin/mkdir --parents /var/www/html/victronbtlelogger
-ExecStartPre=/bin/mkdir --parents /var/cache/victronbtlelogger
+User=victronbtlelogger
+Group=www-data
 ExecStart=/usr/local/bin/victronbtlelogger \
     --verbose 0 \
     --controller F4:4E:FC:A0:F7:DA \
