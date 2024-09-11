@@ -733,6 +733,15 @@ union VictronExtraData_t {
 		//unsigned int unused : 16;
 	} OrionXS; // 0x0F
 };
+struct __attribute__((packed)) VictronManufacturerData_t {
+	uint8_t ManufacturerRecordType;
+	uint16_t ModelID;
+	uint8_t ReadoutType;
+	uint8_t RecordType;
+	uint16_t InitializationVector;
+	uint8_t FirstByteDecryptionKey;
+	VictronExtraData_t ExtraData;
+};
 /////////////////////////////////////////////////////////////////////////////
 class VictronSmartLithium
 {
