@@ -14,7 +14,6 @@ User=victronbtlelogger
 Group=www-data
 ExecStart=/usr/local/bin/victronbtlelogger \
     --verbose 0 \
-    --controller F4:4E:FC:A0:F7:DA \
     --key /etc/victronbtlelogger/victronencryptionkeys.txt \
     --log /var/log/victronbtlelogger \
     --svg /var/www/html/victronbtlelogger \
