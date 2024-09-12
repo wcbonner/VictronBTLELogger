@@ -2420,7 +2420,6 @@ int main(int argc, char** argv)
 		ReadCacheDirectory(); // if cache directory is configured, read it before reading all the normal logs
 		ReadLoggedData(); // only read the logged data if creating SVG files
 		GenerateCacheFile(VictronSmartLithiumMRTGLogs); // update cache files if any new data was in logs
-		WriteAllSVG();
 	}
 
 	ReadVictronEncryptionKeys(VictronEncryptionKeyFilename);
