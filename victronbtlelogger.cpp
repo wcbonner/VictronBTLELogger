@@ -1218,7 +1218,6 @@ void ReadMRTGData(const bdaddr_t& TheAddress, std::vector<VictronType>& TheValue
 /////////////////////////////////////////////////////////////////////////////
 void WriteSVG(std::vector<VictronSmartLithium>& TheValues, const std::filesystem::path& SVGFileName, const std::string& Title = "", const GraphType graph = GraphType::daily, const bool Fahrenheit = true, const bool DarkStyle = false)
 {
-	const bool DrawVoltage = true;
 	if (!TheValues.empty())
 	{
 		// By declaring these items here, I'm then basing all my other dimensions on these
@@ -1226,7 +1225,7 @@ void WriteSVG(std::vector<VictronSmartLithium>& TheValues, const std::filesystem
 		const int SVGHeight(135);
 		const int FontSize(12);
 		const int TickSize(2);
-		int GraphWidth = SVGWidth - (FontSize * 5);
+		int GraphWidth = SVGWidth - (FontSize * 9);
 		struct stat64 SVGStat({ 0 });	// Zero the stat64 structure on allocation
 		if (-1 == stat64(SVGFileName.c_str(), &SVGStat))
 			if (ConsoleVerbosity > 3)
@@ -1244,16 +1243,17 @@ void WriteSVG(std::vector<VictronSmartLithium>& TheValues, const std::filesystem
 				tempOString << "Temperature (" << std::fixed << std::setprecision(1) << TheValues[0].GetTemperature(Fahrenheit) << "\u00B0" << (Fahrenheit ? "F)" : "C)");
 				std::string YLegendTemperature(tempOString.str());
 				tempOString = std::ostringstream();
-				tempOString << "Voltage (" << TheValues[0].GetVoltage() << "V)";
+				tempOString << "Voltage (" << std::setprecision(4) << TheValues[0].GetVoltage() << "V)";
 				std::string YLegendVoltage(tempOString.str());
+				tempOString = std::ostringstream();
+				tempOString << "(" << std::setprecision(3) << TheValues[0].GetCellVoltage(0) << "V) (" << std::setprecision(3) << TheValues[0].GetCellVoltage(1) << "V)";
+				std::string YLegendCell12(tempOString.str());
+				tempOString = std::ostringstream();
+				tempOString << "(" << std::setprecision(3) << TheValues[0].GetCellVoltage(2) << "V) (" << std::setprecision(3) << TheValues[0].GetCellVoltage(3) << "V)";
+				std::string YLegendCell34(tempOString.str());
 				int GraphTop = FontSize + TickSize;
 				int GraphBottom = SVGHeight - GraphTop;
-				int GraphRight = SVGWidth - GraphTop;
-				if (DrawVoltage) // this also has to add the secondary axis
-				{
-					GraphWidth -= FontSize * 2;
-					GraphRight -= FontSize + TickSize * 2;
-				}
+				int GraphRight = SVGWidth - GraphTop - (FontSize + (FontSize / 2)) + (TickSize * 2);
 				int GraphLeft = GraphRight - GraphWidth;
 				int GraphVerticalDivision = (GraphBottom - GraphTop) / 4;
 				double TempMin = DBL_MAX;
@@ -1316,23 +1316,22 @@ void WriteSVG(std::vector<VictronSmartLithium>& TheValues, const std::filesystem
 				SVGFile << "\t<text x=\"" << GraphLeft << "\" y=\"" << GraphTop - 2 << "\">" << Title << "</text>" << std::endl;
 				SVGFile << "\t<text style=\"text-anchor:end\" x=\"" << GraphRight << "\" y=\"" << GraphTop - 2 << "\">" << timeToExcelLocal(TheValues[0].Time) << "</text>" << std::endl;
 				SVGFile << "\t<text style=\"fill:blue;text-anchor:middle\" x=\"" << FontSize * LegendIndex << "\" y=\"50%\" transform=\"rotate(270 " << FontSize * LegendIndex << "," << (GraphTop + GraphBottom) / 2 << ")\">" << YLegendTemperature << "</text>" << std::endl;
-				if (DrawVoltage)
-				{
-					LegendIndex++;
-					SVGFile << "\t<text style=\"fill:green;text-anchor:middle\" x=\"" << FontSize * LegendIndex << "\" y=\"50%\" transform=\"rotate(270 " << FontSize * LegendIndex << "," << (GraphTop + GraphBottom) / 2 << ")\">" << YLegendVoltage << "</text>" << std::endl;
-				}
+				LegendIndex++;
+				SVGFile << "\t<text style=\"fill:green;text-anchor:middle\" x=\"" << FontSize * LegendIndex << "\" y=\"50%\" transform=\"rotate(270 " << FontSize * LegendIndex << "," << (GraphTop + GraphBottom) / 2 << ")\">" << YLegendVoltage << "</text>" << std::endl;
+				LegendIndex++;
+				SVGFile << "\t<text style=\"fill:green;text-anchor:middle\" x=\"" << FontSize * LegendIndex << "\" y=\"50%\" transform=\"rotate(270 " << FontSize * LegendIndex << "," << (GraphTop + GraphBottom) / 2 << ")\">" << YLegendCell12 << "</text>" << std::endl;
+				LegendIndex++;
+				SVGFile << "\t<text style=\"fill:green;text-anchor:middle\" x=\"" << FontSize * LegendIndex << "\" y=\"50%\" transform=\"rotate(270 " << FontSize * LegendIndex << "," << (GraphTop + GraphBottom) / 2 << ")\">" << YLegendCell34 << "</text>" << std::endl;
 
 				// Top Line
 				SVGFile << "\t<line x1=\"" << GraphLeft - TickSize << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphRight + TickSize << "\" y2=\"" << GraphTop << "\"/>" << std::endl;
 				SVGFile << "\t<text style=\"fill:blue;text-anchor:end;dominant-baseline:middle\" x=\"" << GraphLeft - TickSize << "\" y=\"" << GraphTop << "\">" << std::fixed << std::setprecision(1) << TempMax << "</text>" << std::endl;
-				if (DrawVoltage)
-					SVGFile << "\t<text style=\"fill:green;dominant-baseline:middle\" x=\"" << GraphRight + TickSize << "\" y=\"" << GraphTop << "\">" << std::fixed << std::setprecision(1) << VoltMax << "</text>" << std::endl;
+				SVGFile << "\t<text style=\"fill:green;dominant-baseline:middle\" x=\"" << GraphRight + TickSize << "\" y=\"" << GraphTop << "\">" << std::fixed << std::setprecision(1) << VoltMax << "</text>" << std::endl;
 
 				// Bottom Line
 				SVGFile << "\t<line x1=\"" << GraphLeft - TickSize << "\" y1=\"" << GraphBottom << "\" x2=\"" << GraphRight + TickSize << "\" y2=\"" << GraphBottom << "\"/>" << std::endl;
 				SVGFile << "\t<text style=\"fill:blue;text-anchor:end;dominant-baseline:middle\" x=\"" << GraphLeft - TickSize << "\" y=\"" << GraphBottom << "\">" << std::fixed << std::setprecision(1) << TempMin << "</text>" << std::endl;
-				if (DrawVoltage)
-					SVGFile << "\t<text style=\"fill:green;dominant-baseline:middle\" x=\"" << GraphRight + TickSize << "\" y=\"" << GraphBottom << "\">" << std::fixed << std::setprecision(1) << VoltMin << "</text>" << std::endl;
+				SVGFile << "\t<text style=\"fill:green;dominant-baseline:middle\" x=\"" << GraphRight + TickSize << "\" y=\"" << GraphBottom << "\">" << std::fixed << std::setprecision(1) << VoltMin << "</text>" << std::endl;
 
 				// Left Line
 				SVGFile << "\t<line x1=\"" << GraphLeft << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphLeft << "\" y2=\"" << GraphBottom << "\"/>" << std::endl;
@@ -1345,8 +1344,7 @@ void WriteSVG(std::vector<VictronSmartLithium>& TheValues, const std::filesystem
 				{
 					SVGFile << "\t<line style=\"stroke-dasharray:1\" x1=\"" << GraphLeft - TickSize << "\" y1=\"" << GraphTop + (GraphVerticalDivision * index) << "\" x2=\"" << GraphRight + TickSize << "\" y2=\"" << GraphTop + (GraphVerticalDivision * index) << "\" />" << std::endl;
 					SVGFile << "\t<text style=\"fill:blue;text-anchor:end;dominant-baseline:middle\" x=\"" << GraphLeft - TickSize << "\" y=\"" << GraphTop + (GraphVerticalDivision * index) << "\">" << std::fixed << std::setprecision(1) << TempMax - (TempVerticalDivision * index) << "</text>" << std::endl;
-					if (DrawVoltage)
-						SVGFile << "\t<text style=\"fill:green;dominant-baseline:middle\" x=\"" << GraphRight + TickSize << "\" y=\"" << GraphTop + (GraphVerticalDivision * index) << "\">" << std::fixed << std::setprecision(1) << VoltMax - (VoltVerticalDivision * index) << "</text>" << std::endl;
+					SVGFile << "\t<text style=\"fill:green;dominant-baseline:middle\" x=\"" << GraphRight + TickSize << "\" y=\"" << GraphTop + (GraphVerticalDivision * index) << "\">" << std::fixed << std::setprecision(1) << VoltMax - (VoltVerticalDivision * index) << "</text>" << std::endl;
 				}
 
 				// Horizontal Division Dashed Lines
@@ -1405,33 +1403,28 @@ void WriteSVG(std::vector<VictronSmartLithium>& TheValues, const std::filesystem
 				// Directional Arrow
 				SVGFile << "\t<polygon style=\"fill:red;stroke:red;fill-opacity:1;\" points=\"" << GraphLeft - 3 << "," << GraphBottom << " " << GraphLeft + 3 << "," << GraphBottom - 3 << " " << GraphLeft + 3 << "," << GraphBottom + 3 << "\" />" << std::endl;
 
-				{
-					// Temperature Values as a continuous line
-					SVGFile << "\t<!-- Temperature -->" << std::endl;
-					SVGFile << "\t<polyline style=\"fill:none;stroke:blue;clip-path:url(#GraphRegion)\" points=\"";
-					for (auto index = 1; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
-						SVGFile << index + GraphLeft << "," << int(((TempMax - TheValues[index].GetTemperature(Fahrenheit)) * TempVerticalFactor) + GraphTop) << " ";
-					SVGFile << "\" />" << std::endl;
-				}
+				// Temperature Values as a continuous line
+				SVGFile << "\t<!-- Temperature -->" << std::endl;
+				SVGFile << "\t<polyline style=\"fill:none;stroke:blue;clip-path:url(#GraphRegion)\" points=\"";
+				for (auto index = 1; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
+					SVGFile << index + GraphLeft << "," << int(((TempMax - TheValues[index].GetTemperature(Fahrenheit)) * TempVerticalFactor) + GraphTop) << " ";
+				SVGFile << "\" />" << std::endl;
 
-				if (DrawVoltage)
+				// Voltage Graphic as a continuous line
+				SVGFile << "\t<!-- Voltage -->" << std::endl;
+				SVGFile << "\t<polyline style=\"fill:lime;stroke:green;clip-path:url(#GraphRegion)\" points=\"";
+				for (auto index = 1; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
+					SVGFile << index + GraphLeft << "," << int(((VoltMax - TheValues[index].GetVoltage()) * VoltVerticalFactor) + GraphTop) << " ";
+				SVGFile << "\" />" << std::endl;
+
+				for (auto cell = 0; cell < (TheValues.begin()->GetCellCount() - 1); cell++)
 				{
-					// Voltage Graphic as a continuous line
-					SVGFile << "\t<!-- Voltage -->" << std::endl;
+					// Cell Voltage Graphic as a continuous line
+					SVGFile << "\t<!-- Cell " << cell << " Voltage -->" << std::endl;
 					SVGFile << "\t<polyline style=\"fill:lime;stroke:green;clip-path:url(#GraphRegion)\" points=\"";
 					for (auto index = 1; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
-						SVGFile << index + GraphLeft << "," << int(((VoltMax - TheValues[index].GetVoltage()) * VoltVerticalFactor) + GraphTop) << " ";
+						SVGFile << index + GraphLeft << "," << int(((VoltMax - TheValues[index].GetCellVoltage(cell)) * VoltVerticalFactor) + GraphTop) << " ";
 					SVGFile << "\" />" << std::endl;
-
-					for (auto cell = 0; cell < (TheValues.begin()->GetCellCount() - 1); cell++)
-					{
-						// Cell Voltage Graphic as a continuous line
-						SVGFile << "\t<!-- Cell " << cell << " Voltage -->" << std::endl;
-						SVGFile << "\t<polyline style=\"fill:lime;stroke:green;clip-path:url(#GraphRegion)\" points=\"";
-						for (auto index = 1; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
-							SVGFile << index + GraphLeft << "," << int(((VoltMax - TheValues[index].GetCellVoltage(cell)) * VoltVerticalFactor) + GraphTop) << " ";
-						SVGFile << "\" />" << std::endl;
-					}
 				}
 
 				SVGFile << "</svg>" << std::endl;
@@ -1482,8 +1475,7 @@ void WriteSVG(std::vector<VictronOrionXS>& TheValues, const std::filesystem::pat
 				std::string YLegendCurrentOut(tempOString.str());
 				int GraphTop = FontSize + TickSize;
 				int GraphBottom = SVGHeight - GraphTop;
-				int GraphRight = SVGWidth - GraphTop - FontSize + TickSize;
-
+				int GraphRight = SVGWidth - GraphTop - (FontSize + (FontSize/2)) + (TickSize * 2);
 				int GraphLeft = GraphRight - GraphWidth;
 				int GraphVerticalDivision = (GraphBottom - GraphTop) / 4;
 				double AmpMin = DBL_MAX;
