@@ -531,7 +531,7 @@ void bluez_power_on(DBusConnection* dbus_conn, const char* adapter_path, const b
 		dbus_message_iter_close_container(&iterParameter, &variant); // https://dbus.freedesktop.org/doc/api/html/group__DBusMessage.html#gaf00482f63d4af88b7851621d1f24087a
 		dbus_connection_send(dbus_conn, dbus_msg, NULL); // https://dbus.freedesktop.org/doc/api/html/group__DBusConnection.html#gae1cb64f4cf550949b23fd3a756b2f7d0
 		if (ConsoleVerbosity > 0)
-			std::cout << "[" << getTimeISO8601(true) << "] " << dbus_message_get_path(dbus_msg) << ": " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg) << powered << ": " << std::boolalpha << PowerOn << std::endl;
+			std::cout << "[                   ] " << dbus_message_get_path(dbus_msg) << ": " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg) << powered << ": " << std::boolalpha << PowerOn << std::endl;
 		else
 			std::cerr << dbus_message_get_path(dbus_msg) << ": " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg) << powered << ": " << std::boolalpha << PowerOn << std::endl;
 		dbus_message_unref(dbus_msg); // https://dbus.freedesktop.org/doc/api/html/group__DBusMessage.html#gab69441efe683918f6a82469c8763f464
@@ -557,36 +557,32 @@ void bluez_filter_le(DBusConnection* dbus_conn, const char* adapter_path, const 
 			DBusMessageIter iterArray;
 			dbus_message_iter_open_container(&iterParameter, DBUS_TYPE_ARRAY, "{sv}", &iterArray);
 			DBusMessageIter iterDict;
-
 			dbus_message_iter_open_container(&iterArray, DBUS_TYPE_DICT_ENTRY, NULL, &iterDict);
-				const char* cpTransport = "Transport";
-				dbus_message_iter_append_basic(&iterDict, DBUS_TYPE_STRING, &cpTransport);
-				DBusMessageIter iterVariant;
-				dbus_message_iter_open_container(&iterDict, DBUS_TYPE_VARIANT, DBUS_TYPE_STRING_AS_STRING, &iterVariant);
-				const char* cpBTLE = "le";
-				dbus_message_iter_append_basic(&iterVariant, DBUS_TYPE_STRING, &cpBTLE);
-				dbus_message_iter_close_container(&iterDict, &iterVariant);
+			const char* cpTransport = "Transport";
+			dbus_message_iter_append_basic(&iterDict, DBUS_TYPE_STRING, &cpTransport);
+			DBusMessageIter iterVariant;
+			dbus_message_iter_open_container(&iterDict, DBUS_TYPE_VARIANT, DBUS_TYPE_STRING_AS_STRING, &iterVariant);
+			const char* cpBTLE = "le";
+			dbus_message_iter_append_basic(&iterVariant, DBUS_TYPE_STRING, &cpBTLE);
+			dbus_message_iter_close_container(&iterDict, &iterVariant);
 			dbus_message_iter_close_container(&iterArray, &iterDict);
-
 			dbus_message_iter_open_container(&iterArray, DBUS_TYPE_DICT_ENTRY, NULL, &iterDict);
-				const char* cpDuplicateData = "DuplicateData";
-				dbus_message_iter_append_basic(&iterDict, DBUS_TYPE_STRING, &cpDuplicateData);
-				dbus_message_iter_open_container(&iterDict, DBUS_TYPE_VARIANT, DBUS_TYPE_BOOLEAN_AS_STRING, &iterVariant);
-				dbus_bool_t cpTrue = DuplicateData ? TRUE : FALSE;
-				dbus_message_iter_append_basic(&iterVariant, DBUS_TYPE_BOOLEAN, &cpTrue);
-				dbus_message_iter_close_container(&iterDict, &iterVariant);
+			const char* cpDuplicateData = "DuplicateData";
+			dbus_message_iter_append_basic(&iterDict, DBUS_TYPE_STRING, &cpDuplicateData);
+			dbus_message_iter_open_container(&iterDict, DBUS_TYPE_VARIANT, DBUS_TYPE_BOOLEAN_AS_STRING, &iterVariant);
+			dbus_bool_t cpTrue = DuplicateData ? TRUE : FALSE;
+			dbus_message_iter_append_basic(&iterVariant, DBUS_TYPE_BOOLEAN, &cpTrue);
+			dbus_message_iter_close_container(&iterDict, &iterVariant);
 			dbus_message_iter_close_container(&iterArray, &iterDict);
-
 			dbus_message_iter_open_container(&iterArray, DBUS_TYPE_DICT_ENTRY, NULL, &iterDict);
-				const char* cpRSSI = "RSSI";
-				dbus_message_iter_append_basic(&iterDict, DBUS_TYPE_STRING, &cpRSSI);
-				dbus_message_iter_open_container(&iterDict, DBUS_TYPE_VARIANT, DBUS_TYPE_INT16_AS_STRING, &iterVariant);
-				//dbus_int16_t cpRSSIValue = std::numeric_limits<dbus_int16_t>::min();
-				dbus_int16_t cpRSSIValue = -100;
-				dbus_message_iter_append_basic(&iterVariant, DBUS_TYPE_INT16, &cpRSSIValue);
-				dbus_message_iter_close_container(&iterDict, &iterVariant);
+			const char* cpRSSI = "RSSI";
+			dbus_message_iter_append_basic(&iterDict, DBUS_TYPE_STRING, &cpRSSI);
+			dbus_message_iter_open_container(&iterDict, DBUS_TYPE_VARIANT, DBUS_TYPE_INT16_AS_STRING, &iterVariant);
+			//dbus_int16_t cpRSSIValue = std::numeric_limits<dbus_int16_t>::min();
+			dbus_int16_t cpRSSIValue = -100;
+			dbus_message_iter_append_basic(&iterVariant, DBUS_TYPE_INT16, &cpRSSIValue);
+			dbus_message_iter_close_container(&iterDict, &iterVariant);
 			dbus_message_iter_close_container(&iterArray, &iterDict);
-
 			dbus_message_iter_close_container(&iterParameter, &iterArray);
 		}
 		else
@@ -605,23 +601,20 @@ void bluez_filter_le(DBusConnection* dbus_conn, const char* adapter_path, const 
 		dbus_error_init(&dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusErrors.html#ga8937f0b7cdf8554fa6305158ce453fbe
 		DBusMessage* dbus_reply = dbus_connection_send_with_reply_and_block(dbus_conn, dbus_msg, DBUS_TIMEOUT_INFINITE, &dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusConnection.html#ga8d6431f17a9e53c9446d87c2ba8409f0
 		if (ConsoleVerbosity > 0)
-			ssOutput << "[" << getTimeISO8601(true) << "] ";
-		ssOutput << dbus_message_get_path(dbus_msg) << ": " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg) << std::endl;
+			ssOutput << "[                   ] ";
+		ssOutput << dbus_message_get_path(dbus_msg) << ": " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg);
 		if (!dbus_reply)
 		{
-			if (ConsoleVerbosity > 0)
-				ssOutput << "[                   ] ";
-			ssOutput << "Error: " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg);
 			if (dbus_error_is_set(&dbus_error))
 			{
-				ssOutput << ": " << dbus_error.message;
+				ssOutput << " Error: " << dbus_error.message << " " << __FILE__ << "(" << __LINE__ << ")";
 				dbus_error_free(&dbus_error);
 			}
-			ssOutput << " " << __FILE__ << "(" << __LINE__ << ")" << std::endl;
 		}
 		else
 			dbus_message_unref(dbus_reply);
 		dbus_message_unref(dbus_msg);
+		ssOutput << std::endl;
 	}
 	if (ConsoleVerbosity > 0)
 		std::cout << ssOutput.str();
@@ -632,13 +625,14 @@ bool bluez_discovery(DBusConnection* dbus_conn, const char* adapter_path, const 
 {
 	bool bStarted = false;
 	// https://git.kernel.org/pub/scm/bluetooth/bluez.git/tree/doc/adapter-api.txt
+	// https://git.kernel.org/pub/scm/bluetooth/bluez.git/tree/doc/org.bluez.Adapter.rst
+	std::ostringstream ssOutput;
 	DBusMessage* dbus_msg = dbus_message_new_method_call("org.bluez", adapter_path, "org.bluez.Adapter1", bStartDiscovery ? "StartDiscovery" : "StopDiscovery");
 	if (!dbus_msg)
 	{
 		if (ConsoleVerbosity > 0)
-			std::cout << "[                   ] Can't allocate dbus_message_new_method_call: " << __FILE__ << "(" << __LINE__ << ")" << std::endl;
-		else
-			std::cerr << "Can't allocate dbus_message_new_method_call: " << __FILE__ << "(" << __LINE__ << ")" << std::endl;
+			ssOutput << "[                   ] ";
+		ssOutput << "Can't allocate dbus_message_new_method_call: " << __FILE__ << "(" << __LINE__ << ")" << std::endl;
 	}
 	else
 	{
@@ -646,26 +640,28 @@ bool bluez_discovery(DBusConnection* dbus_conn, const char* adapter_path, const 
 		dbus_error_init(&dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusErrors.html#ga8937f0b7cdf8554fa6305158ce453fbe
 		DBusMessage* dbus_reply = dbus_connection_send_with_reply_and_block(dbus_conn, dbus_msg, DBUS_TIMEOUT_INFINITE, &dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusConnection.html#ga8d6431f17a9e53c9446d87c2ba8409f0
 		if (ConsoleVerbosity > 0)
-			std::cout << "[" << getTimeISO8601(true) << "] " << dbus_message_get_path(dbus_msg) << ": " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg) << std::endl;
-		else
-			std::cerr << dbus_message_get_path(dbus_msg) << ": " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg) << std::endl;
+			ssOutput << "[                   ] ";
+		ssOutput << dbus_message_get_path(dbus_msg) << ": " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg);
 		if (!dbus_reply)
 		{
-			std::cout << __FILE__ << "(" << __LINE__ << "): Error: " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg);
 			if (dbus_error_is_set(&dbus_error))
 			{
-				std::cout << ": " << dbus_error.message;
+				ssOutput << ": Error: " << dbus_error.message << " " << __FILE__ << "(" << __LINE__ << ")";
 				dbus_error_free(&dbus_error);
 			}
-			std::cout << std::endl;
 		}
 		else
 		{
-			bStarted = true;
+			bStarted = bStartDiscovery;
 			dbus_message_unref(dbus_reply);
 		}
 		dbus_message_unref(dbus_msg);
+		ssOutput << std::endl;
 	}
+	if (ConsoleVerbosity > 0)
+		std::cout << ssOutput.str();
+	else
+		std::cerr << ssOutput.str();
 	return(bStarted);
 }
 /////////////////////////////////////////////////////////////////////////////
@@ -1950,229 +1946,226 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 		dbus_message_iter_next(&dict2_iter);
 		DBusMessageIter variant_iter;
 		dbus_message_iter_recurse(&dict2_iter, &variant_iter);
-		do
+		auto dbus_message_Type = dbus_message_iter_get_arg_type(&variant_iter);
+		if (!Key.compare("Name"))
 		{
-			auto dbus_message_Type = dbus_message_iter_get_arg_type(&variant_iter);
-			if (!Key.compare("Name"))
+			if ((DBUS_TYPE_STRING == dbus_message_Type) || (DBUS_TYPE_OBJECT_PATH == dbus_message_Type))
 			{
-				if ((DBUS_TYPE_STRING == dbus_message_Type) || (DBUS_TYPE_OBJECT_PATH == dbus_message_Type))
-				{
-					dbus_message_iter_get_basic(&variant_iter, &value);
-					std::string Name(value.str);
-					auto ElementInserted = VictronNames.insert(std::make_pair(dbusBTAddress, Name)); // Either get the existing record or insert a new one
-					if (!ElementInserted.second) // true if inserted, false if already exists
-						ElementInserted.first->second = Name;
-					ssOutput << "[" << timeToISO8601(TimeNow, true) << "] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << Name << std::endl;
-				}
+				dbus_message_iter_get_basic(&variant_iter, &value);
+				std::string Name(value.str);
+				auto ElementInserted = VictronNames.insert(std::make_pair(dbusBTAddress, Name)); // Either get the existing record or insert a new one
+				if (!ElementInserted.second) // true if inserted, false if already exists
+					ElementInserted.first->second = Name;
+				ssOutput << "[" << timeToISO8601(TimeNow, true) << "] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << Name << std::endl;
 			}
-			else if (!Key.compare("UUIDs"))
+		}
+		else if (!Key.compare("UUIDs"))
+		{
+			DBusMessageIter array3_iter;
+			dbus_message_iter_recurse(&variant_iter, &array3_iter);
+			do
+			{
+				if (DBUS_TYPE_STRING == dbus_message_iter_get_arg_type(&array3_iter))
+				{
+					dbus_message_iter_get_basic(&array3_iter, &value);
+					ssOutput << "[                   ] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << value.str << std::endl;
+				}
+			} while (dbus_message_iter_next(&array3_iter));
+		}
+		else if (!Key.compare("ManufacturerData"))
+		{
+			if (DBUS_TYPE_ARRAY == dbus_message_Type)
 			{
 				DBusMessageIter array3_iter;
 				dbus_message_iter_recurse(&variant_iter, &array3_iter);
 				do
 				{
-					if (DBUS_TYPE_STRING == dbus_message_iter_get_arg_type(&array3_iter))
+					if (DBUS_TYPE_DICT_ENTRY == dbus_message_iter_get_arg_type(&array3_iter))
 					{
-						dbus_message_iter_get_basic(&array3_iter, &value);
-						ssOutput << "[                   ] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << value.str << std::endl;
-					}
-				} while (dbus_message_iter_next(&array3_iter));
-			}
-			else if (!Key.compare("ManufacturerData"))
-			{
-				if (DBUS_TYPE_ARRAY == dbus_message_Type)
-				{
-					DBusMessageIter array3_iter;
-					dbus_message_iter_recurse(&variant_iter, &array3_iter);
-					do
-					{
-						if (DBUS_TYPE_DICT_ENTRY == dbus_message_iter_get_arg_type(&array3_iter))
+						DBusMessageIter dict1_iter;
+						dbus_message_iter_recurse(&array3_iter, &dict1_iter);
+						if (DBUS_TYPE_UINT16 == dbus_message_iter_get_arg_type(&dict1_iter))
 						{
-							DBusMessageIter dict1_iter;
-							dbus_message_iter_recurse(&array3_iter, &dict1_iter);
-							if (DBUS_TYPE_UINT16 == dbus_message_iter_get_arg_type(&dict1_iter))
+							DBusBasicValue value;
+							dbus_message_iter_get_basic(&dict1_iter, &value);
+							uint16_t ManufacturerID(value.u16);
+							dbus_message_iter_next(&dict1_iter);
+							if (DBUS_TYPE_VARIANT == dbus_message_iter_get_arg_type(&dict1_iter))
 							{
-								DBusBasicValue value;
-								dbus_message_iter_get_basic(&dict1_iter, &value);
-								uint16_t ManufacturerID(value.u16);
-								dbus_message_iter_next(&dict1_iter);
-								if (DBUS_TYPE_VARIANT == dbus_message_iter_get_arg_type(&dict1_iter))
+								DBusMessageIter variant2_iter;
+								dbus_message_iter_recurse(&dict1_iter, &variant2_iter);
+								if (DBUS_TYPE_ARRAY == dbus_message_iter_get_arg_type(&variant2_iter))
 								{
-									DBusMessageIter variant2_iter;
-									dbus_message_iter_recurse(&dict1_iter, &variant2_iter);
-									if (DBUS_TYPE_ARRAY == dbus_message_iter_get_arg_type(&variant2_iter))
+									std::vector<uint8_t> ManufacturerData;
+									DBusMessageIter array4_iter;
+									dbus_message_iter_recurse(&variant2_iter, &array4_iter);
+									do
 									{
-										std::vector<uint8_t> ManufacturerData;
-										DBusMessageIter array4_iter;
-										dbus_message_iter_recurse(&variant2_iter, &array4_iter);
-										do
+										if (DBUS_TYPE_BYTE == dbus_message_iter_get_arg_type(&array4_iter))
 										{
-											if (DBUS_TYPE_BYTE == dbus_message_iter_get_arg_type(&array4_iter))
-											{
-												dbus_message_iter_get_basic(&array4_iter, &value);
-												ManufacturerData.push_back(value.byt);
-											}
-										} while (dbus_message_iter_next(&array4_iter));
+											dbus_message_iter_get_basic(&array4_iter, &value);
+											ManufacturerData.push_back(value.byt);
+										}
+									} while (dbus_message_iter_next(&array4_iter));
 
-										ssOutput << "[" << timeToISO8601(TimeNow, true) << "] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << std::setfill('0') << std::hex << std::setw(4) << ManufacturerID << ":";
-										for (auto& Data : ManufacturerData)
-											ssOutput << std::setw(2) << int(Data);
-										if (ConsoleVerbosity > 4)
+									ssOutput << "[" << timeToISO8601(TimeNow, true) << "] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << std::setfill('0') << std::hex << std::setw(4) << ManufacturerID << ":";
+									for (auto& Data : ManufacturerData)
+										ssOutput << std::setw(2) << int(Data);
+									if (ConsoleVerbosity > 4)
+									{
+										// https://bitbucket.org/bluetooth-SIG/public/src/main/assigned_numbers/company_identifiers/company_identifiers.yaml
+										ssOutput << " ";
+										if (0x0001 == ManufacturerID)
+											ssOutput << "'Nokia Mobile Phones'";
+										if (0x0006 == ManufacturerID)
+											ssOutput << "'Microsoft'";
+										if (0x004c == ManufacturerID)
+											ssOutput << "'Apple, Inc.'";
+										if (0x058e == ManufacturerID)
+											ssOutput << "'Meta Platforms Technologies, LLC'";
+										if (0x02E1 == ManufacturerID)
+											ssOutput << "'Victron Energy BV'";
+									}
+									std::vector<uint8_t> EncryptionKey;
+									for (size_t i = 0; i < Device->second.length(); i += 2)
+									{
+										std::string byteString(Device->second.substr(i, 2));
+										uint8_t byteValue(static_cast<uint8_t>(std::stoi(byteString, nullptr, 16)));
+										EncryptionKey.push_back(byteValue);
+									}
+									if (ManufacturerData[7] == EncryptionKey[0]) // if stored key doesnt start with this data, we need to update stored key
+									{
+										uint8_t DecryptedData[32] { 0 };
+										if (sizeof(DecryptedData) >= (ManufacturerData.size() - 8)) // simple check to make sure we don't buffer overflow
 										{
-											// https://bitbucket.org/bluetooth-SIG/public/src/main/assigned_numbers/company_identifiers/company_identifiers.yaml
-											ssOutput << " ";
-											if (0x0001 == ManufacturerID)
-												ssOutput << "'Nokia Mobile Phones'";
-											if (0x0006 == ManufacturerID)
-												ssOutput << "'Microsoft'";
-											if (0x004c == ManufacturerID)
-												ssOutput << "'Apple, Inc.'";
-											if (0x058e == ManufacturerID)
-												ssOutput << "'Meta Platforms Technologies, LLC'";
-											if (0x02E1 == ManufacturerID)
-												ssOutput << "'Victron Energy BV'";
-										}
-										std::vector<uint8_t> EncryptionKey;
-										for (size_t i = 0; i < Device->second.length(); i += 2)
-										{
-											std::string byteString(Device->second.substr(i, 2));
-											uint8_t byteValue(static_cast<uint8_t>(std::stoi(byteString, nullptr, 16)));
-											EncryptionKey.push_back(byteValue);
-										}
-										if (ManufacturerData[7] == EncryptionKey[0]) // if stored key doesnt start with this data, we need to update stored key
-										{
-											uint8_t DecryptedData[32] { 0 };
-											if (sizeof(DecryptedData) >= (ManufacturerData.size() - 8)) // simple check to make sure we don't buffer overflow
+											//[2024-09-04T04:47:30] [CE:A5:D7:7B:CD:81] Name: S/V Sola Batt 1
+											//                                                                 0 1 2 3  4  5 6  7  8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 
+											//[2024-09-03T21:47:30] [CE:A5:D7:7B:CD:81] ManufacturerData: 02e1:1000eba0 05 35a2 d9 2d331d1ab2f30574993493ead132be09 'Victron Energy BV'
+											//[2024-09-03T21:47:37] [CE:A5:D7:7B:CD:81] ManufacturerData: 02e1:1000eba0 05 3ba2 d9 53fefc2f4ce0fac5905e13b24c6ef6c2 'Victron Energy BV'
+											//[2024-09-03T21:47:37] [CE:A5:D7:7B:CD:81] ManufacturerData: 02e1:1000eba0 05 3ba2 d9 53fefc2f4ce0fac5905e13b24c6ef6c2 'Victron Energy BV'										
+											//                                                                          0  1 2  3  4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9     
+											//[2024-09-04T16:56:06] [D3:D1:90:54:EB:F0] Name: S/V Sola Orion XS
+											//[2024-09-04T09:56:06] [D3:D1:90:54:EB:F0] ManufacturerData: 02e1:1000f0a3 0f 526d 4a 75a80473b5ec702716a85f2db193 'Victron Energy BV'
+											// https://community.victronenergy.com/questions/187303/victron-bluetooth-advertising-protocol.html
+											//Byte [0] is the Manufacturer Data Record type and is always 0x10.
+											//Byte [1] and [2] are the model id. In my case the 0x02 0x57 means I have the MPPT 100/50 (I forget where I found this info but it's always 2 bytes and it's not really needed for decryption)
+											//Byte [3] is the "read out type" which was always 0xA0 in my case but i didn't use this byte at all
+											//
+											//The first 4 bytes aren't mentioned in the provided documentation so it was difficult to figure out where the "extra data" started. Now we get into the bytes documented:
+											//Byte [4] is the record type. In my case it was always 0x01 because I have a "Solar Charger"
+											//Byte [5] and [6] are the Nonce/Data Counter used for decryption (more on this later)
+											//Byte [7] should match the first byte of your devices encryption key. In my case this was 0x20.
+											//
+											//The rest of the bytes are the encrypted data of which there are 12 bytes for my Victron device.
+											EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+											if (ctx != 0)
 											{
-												//[2024-09-04T04:47:30] [CE:A5:D7:7B:CD:81] Name: S/V Sola Batt 1
-												//                                                                 0 1 2 3  4  5 6  7  8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 
-												//[2024-09-03T21:47:30] [CE:A5:D7:7B:CD:81] ManufacturerData: 02e1:1000eba0 05 35a2 d9 2d331d1ab2f30574993493ead132be09 'Victron Energy BV'
-												//[2024-09-03T21:47:37] [CE:A5:D7:7B:CD:81] ManufacturerData: 02e1:1000eba0 05 3ba2 d9 53fefc2f4ce0fac5905e13b24c6ef6c2 'Victron Energy BV'
-												//[2024-09-03T21:47:37] [CE:A5:D7:7B:CD:81] ManufacturerData: 02e1:1000eba0 05 3ba2 d9 53fefc2f4ce0fac5905e13b24c6ef6c2 'Victron Energy BV'										
-												//                                                                          0  1 2  3  4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9     
-												//[2024-09-04T16:56:06] [D3:D1:90:54:EB:F0] Name: S/V Sola Orion XS
-												//[2024-09-04T09:56:06] [D3:D1:90:54:EB:F0] ManufacturerData: 02e1:1000f0a3 0f 526d 4a 75a80473b5ec702716a85f2db193 'Victron Energy BV'
-												// https://community.victronenergy.com/questions/187303/victron-bluetooth-advertising-protocol.html
-												//Byte [0] is the Manufacturer Data Record type and is always 0x10.
-												//Byte [1] and [2] are the model id. In my case the 0x02 0x57 means I have the MPPT 100/50 (I forget where I found this info but it's always 2 bytes and it's not really needed for decryption)
-												//Byte [3] is the "read out type" which was always 0xA0 in my case but i didn't use this byte at all
-												//
-												//The first 4 bytes aren't mentioned in the provided documentation so it was difficult to figure out where the "extra data" started. Now we get into the bytes documented:
-												//Byte [4] is the record type. In my case it was always 0x01 because I have a "Solar Charger"
-												//Byte [5] and [6] are the Nonce/Data Counter used for decryption (more on this later)
-												//Byte [7] should match the first byte of your devices encryption key. In my case this was 0x20.
-												//
-												//The rest of the bytes are the encrypted data of which there are 12 bytes for my Victron device.
-												EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-												if (ctx != 0)
+												uint8_t InitializationVector[16] { ManufacturerData[5], ManufacturerData[6], 0}; // The first two bytes are assigned, the rest of the 16 are padded with zero
+
+												if (1 == EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, EncryptionKey.data(), InitializationVector))
 												{
-													uint8_t InitializationVector[16] { ManufacturerData[5], ManufacturerData[6], 0}; // The first two bytes are assigned, the rest of the 16 are padded with zero
-
-													if (1 == EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, EncryptionKey.data(), InitializationVector))
+													int len(0);
+													if (1 == EVP_DecryptUpdate(ctx, DecryptedData, &len, ManufacturerData.data() + 8, ManufacturerData.size() - 8))
 													{
-														int len(0);
-														if (1 == EVP_DecryptUpdate(ctx, DecryptedData, &len, ManufacturerData.data() + 8, ManufacturerData.size() - 8))
+														if (1 == EVP_DecryptFinal_ex(ctx, DecryptedData + len, &len))
 														{
-															if (1 == EVP_DecryptFinal_ex(ctx, DecryptedData + len, &len))
+															// We have decrypted data!
+															ManufacturerData[5] = ManufacturerData[6] = ManufacturerData[7] = 0; // I'm writing a zero here to remind myself I've decoded the data already
+															for (auto index = 0; index < ManufacturerData.size() - 8; index++) // copy the decoded data over the original data
+																ManufacturerData[index+8] = DecryptedData[index];
+															std::ostringstream ssLogEntry;
+															ssLogEntry << timeToISO8601(TimeNow) << "\t";
+															for (auto &a : ManufacturerData)
+																ssLogEntry << std::setfill('0') << std::hex << std::setw(2) << int(a);
+															std::queue<std::string> foo;
+															auto ret = VictronVirtualLog.insert(std::pair<bdaddr_t, std::queue<std::string>>(dbusBTAddress, foo)); // Either get the existing record or insert a new one
+															ret.first->second.push(ssLogEntry.str());	// puts the measurement in the queue to be written to the log file
+															//UpdateMRTGData(localBTAddress, localTemp);	// puts the measurement in the fake MRTG data structure
+															//GoveeLastDownload.insert(std::pair<bdaddr_t, time_t>(localBTAddress, 0));	// Makes sure the Bluetooth Address is in the list to get downloaded historical data
+															if (ManufacturerData[4] == 0x01) // Solar Charger
 															{
-																// We have decrypted data!
-																ManufacturerData[5] = ManufacturerData[6] = ManufacturerData[7] = 0; // I'm writing a zero here to remind myself I've decoded the data already
-																for (auto index = 0; index < ManufacturerData.size() - 8; index++) // copy the decoded data over the original data
-																	ManufacturerData[index+8] = DecryptedData[index];
-																std::ostringstream ssLogEntry;
-																ssLogEntry << timeToISO8601(TimeNow) << "\t";
-																for (auto &a : ManufacturerData)
-																	ssLogEntry << std::setfill('0') << std::hex << std::setw(2) << int(a);
-																std::queue<std::string> foo;
-																auto ret = VictronVirtualLog.insert(std::pair<bdaddr_t, std::queue<std::string>>(dbusBTAddress, foo)); // Either get the existing record or insert a new one
-																ret.first->second.push(ssLogEntry.str());	// puts the measurement in the queue to be written to the log file
-																//UpdateMRTGData(localBTAddress, localTemp);	// puts the measurement in the fake MRTG data structure
-																//GoveeLastDownload.insert(std::pair<bdaddr_t, time_t>(localBTAddress, 0));	// Makes sure the Bluetooth Address is in the list to get downloaded historical data
-																if (ManufacturerData[4] == 0x01) // Solar Charger
+																if (ConsoleVerbosity > 0)
 																{
+																	VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data() + 8);
+																	ssOutput << std::dec;
+																	ssOutput << " (Solar)";
+																	ssOutput << " battery_current:" << float(ExtraDataPtr->SolarCharger.battery_current) * 0.01 << "V";
+																	ssOutput << " battery_voltage:" << float(ExtraDataPtr->SolarCharger.battery_voltage) * 0.01 << "V";
+																	ssOutput << " load_current:" << float(ExtraDataPtr->SolarCharger.load_current) * 0.01 << "V";
+																}
+															}
+															else if (ManufacturerData[4] == 0x04) // DC/DC converter
+															{
+																if (ConsoleVerbosity > 0)
+																{
+																	VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data() + 8);
+																	ssOutput << std::dec;
+																	ssOutput << " (DC/DC)";
+																	ssOutput << " input_voltage:" << float(ExtraDataPtr->DCDCConverter.input_voltage) * 0.01 + 2.60 << "V";
+																	ssOutput << " output_voltage:" << float(ExtraDataPtr->DCDCConverter.output_voltage) * 0.01 + 2.60 << "V";
+																}
+															}
+															else if (ManufacturerData[4] == 0x05) // SmartLithium
+															{
+																VictronSmartLithium local;
+																if (local.ReadManufacturerData(ManufacturerData, TimeNow))
+																{
+																	UpdateMRTGData(dbusBTAddress, local, VictronSmartLithiumMRTGLogs);	// puts the measurement in the fake MRTG data structure
 																	if (ConsoleVerbosity > 0)
-																	{
-																		VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data() + 8);
-																		ssOutput << std::dec;
-																		ssOutput << " (Solar)";
-																		ssOutput << " battery_current:" << float(ExtraDataPtr->SolarCharger.battery_current) * 0.01 << "V";
-																		ssOutput << " battery_voltage:" << float(ExtraDataPtr->SolarCharger.battery_voltage) * 0.01 << "V";
-																		ssOutput << " load_current:" << float(ExtraDataPtr->SolarCharger.load_current) * 0.01 << "V";
-																	}
+																		ssOutput << local.WriteConsole();
 																}
-																else if (ManufacturerData[4] == 0x04) // DC/DC converter
+																else if (ConsoleVerbosity > 0)
 																{
+																	VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data() + 8);
+																	ssOutput << std::dec;
+																	ssOutput << " (SmartLithium)";
+																	ssOutput << " cell_1:" << float(ExtraDataPtr->SmartLithium.cell_1) * 0.01 + 2.60 << "V";
+																	ssOutput << " cell_2:" << float(ExtraDataPtr->SmartLithium.cell_2) * 0.01 + 2.60 << "V";
+																	ssOutput << " cell_3:" << float(ExtraDataPtr->SmartLithium.cell_3) * 0.01 + 2.60 << "V";
+																	ssOutput << " cell_4:" << float(ExtraDataPtr->SmartLithium.cell_4) * 0.01 + 2.60 << "V";
+																	ssOutput << " cell_5:" << float(ExtraDataPtr->SmartLithium.cell_5) * 0.01 + 2.60 << "V";
+																	ssOutput << " cell_6:" << float(ExtraDataPtr->SmartLithium.cell_6) * 0.01 + 2.60 << "V";
+																	ssOutput << " cell_7:" << float(ExtraDataPtr->SmartLithium.cell_7) * 0.01 + 2.60 << "V";
+																	ssOutput << " cell_8:" << float(ExtraDataPtr->SmartLithium.cell_8) * 0.01 + 2.60 << "V";
+																	ssOutput << " battery_voltage:" << float(ExtraDataPtr->SmartLithium.battery_voltage) * 0.01 << "V";
+																	ssOutput << " battery_temperature:" << ExtraDataPtr->SmartLithium.battery_temperature - 40 << "\u00B0" << "C";
+																}
+															}
+															else if (ManufacturerData[4] == 0x0F) // OrionXS
+															{
+																VictronOrionXS local;
+																if (local.ReadManufacturerData(ManufacturerData, TimeNow))
+																{
+																	UpdateMRTGData(dbusBTAddress, local, VictronOrionXSMRTGLogs);	// puts the measurement in the fake MRTG data structure
 																	if (ConsoleVerbosity > 0)
-																	{
-																		VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data() + 8);
-																		ssOutput << std::dec;
-																		ssOutput << " (DC/DC)";
-																		ssOutput << " input_voltage:" << float(ExtraDataPtr->DCDCConverter.input_voltage) * 0.01 + 2.60 << "V";
-																		ssOutput << " output_voltage:" << float(ExtraDataPtr->DCDCConverter.output_voltage) * 0.01 + 2.60 << "V";
-																	}
+																		ssOutput << local.WriteConsole();
 																}
-																else if (ManufacturerData[4] == 0x05) // SmartLithium
+																else if (ConsoleVerbosity > 0)
 																{
-																	VictronSmartLithium local;
-																	if (local.ReadManufacturerData(ManufacturerData, TimeNow))
-																	{
-																		UpdateMRTGData(dbusBTAddress, local, VictronSmartLithiumMRTGLogs);	// puts the measurement in the fake MRTG data structure
-																		if (ConsoleVerbosity > 0)
-																			ssOutput << local.WriteConsole();
-																	}
-																	else if (ConsoleVerbosity > 0)
-																	{
-																		VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data() + 8);
-																		ssOutput << std::dec;
-																		ssOutput << " (SmartLithium)";
-																		ssOutput << " cell_1:" << float(ExtraDataPtr->SmartLithium.cell_1) * 0.01 + 2.60 << "V";
-																		ssOutput << " cell_2:" << float(ExtraDataPtr->SmartLithium.cell_2) * 0.01 + 2.60 << "V";
-																		ssOutput << " cell_3:" << float(ExtraDataPtr->SmartLithium.cell_3) * 0.01 + 2.60 << "V";
-																		ssOutput << " cell_4:" << float(ExtraDataPtr->SmartLithium.cell_4) * 0.01 + 2.60 << "V";
-																		ssOutput << " cell_5:" << float(ExtraDataPtr->SmartLithium.cell_5) * 0.01 + 2.60 << "V";
-																		ssOutput << " cell_6:" << float(ExtraDataPtr->SmartLithium.cell_6) * 0.01 + 2.60 << "V";
-																		ssOutput << " cell_7:" << float(ExtraDataPtr->SmartLithium.cell_7) * 0.01 + 2.60 << "V";
-																		ssOutput << " cell_8:" << float(ExtraDataPtr->SmartLithium.cell_8) * 0.01 + 2.60 << "V";
-																		ssOutput << " battery_voltage:" << float(ExtraDataPtr->SmartLithium.battery_voltage) * 0.01 << "V";
-																		ssOutput << " battery_temperature:" << ExtraDataPtr->SmartLithium.battery_temperature - 40 << "\u00B0" << "C";
-																	}
-																}
-																else if (ManufacturerData[4] == 0x0F) // OrionXS
-																{
-																	VictronOrionXS local;
-																	if (local.ReadManufacturerData(ManufacturerData, TimeNow))
-																	{
-																		UpdateMRTGData(dbusBTAddress, local, VictronOrionXSMRTGLogs);	// puts the measurement in the fake MRTG data structure
-																		if (ConsoleVerbosity > 0)
-																			ssOutput << local.WriteConsole();
-																	}
-																	else if (ConsoleVerbosity > 0)
-																	{
-																		VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data() + 8);
-																		ssOutput << std::dec;
-																		ssOutput << " (Orion XS)";
-																		ssOutput << " output_voltage:" << float(ExtraDataPtr->OrionXS.output_voltage) * 0.01 << "V";
-																		ssOutput << " output_current:" << float(ExtraDataPtr->OrionXS.output_current) * 0.01 << "A";
-																		ssOutput << " input_voltage:" << float(ExtraDataPtr->OrionXS.input_voltage) * 0.01 << "V";
-																		ssOutput << " input_current:" << float(ExtraDataPtr->OrionXS.input_current) * 0.01 << "A";
-																	}
+																	VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data() + 8);
+																	ssOutput << std::dec;
+																	ssOutput << " (Orion XS)";
+																	ssOutput << " output_voltage:" << float(ExtraDataPtr->OrionXS.output_voltage) * 0.01 << "V";
+																	ssOutput << " output_current:" << float(ExtraDataPtr->OrionXS.output_current) * 0.01 << "A";
+																	ssOutput << " input_voltage:" << float(ExtraDataPtr->OrionXS.input_voltage) * 0.01 << "V";
+																	ssOutput << " input_current:" << float(ExtraDataPtr->OrionXS.input_current) * 0.01 << "A";
 																}
 															}
 														}
 													}
-													EVP_CIPHER_CTX_free(ctx);
 												}
+												EVP_CIPHER_CTX_free(ctx);
 											}
-											ssOutput << std::endl;
 										}
+										ssOutput << std::endl;
 									}
 								}
 							}
 						}
-					} while (dbus_message_iter_next(&array3_iter));
-				}
+					}
+				} while (dbus_message_iter_next(&array3_iter));
 			}
-		} while (dbus_message_iter_next(&variant_iter));
+		}
 	} while (dbus_message_iter_next(&array_iter));
 	return(ssOutput.str());
 }
@@ -2322,6 +2315,113 @@ void bluez_dbus_msg_PropertiesChanged(DBusMessage* dbus_msg, bdaddr_t& dbusBTAdd
 	}
 	if (ConsoleVerbosity > 1)
 		std::cout << ssOutput.str();
+}
+void bluez_dbus_RemoveKnownDevices(DBusConnection* dbus_conn, const char* adapter_path, const std::map<bdaddr_t, std::string>& KnownDevices)
+{
+	// This link helped figure out how to remove a device
+	// https://www.linumiz.com/bluetooth-removedevice-to-remove-the-device/
+	// https://www.mankier.com/5/org.bluez.Adapter#Interface-void_RemoveDevice(object_device)
+	std::ostringstream ssOutput;
+	std::queue<std::string> ObjectsToDelete;
+	DBusMessage* dbus_msg = dbus_message_new_method_call("org.bluez", "/", "org.freedesktop.DBus.ObjectManager", "GetManagedObjects");
+	if (dbus_msg)
+	{
+		// Initialize D-Bus error
+		DBusError dbus_error;
+		dbus_error_init(&dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusErrors.html#ga8937f0b7cdf8554fa6305158ce453fbe
+		DBusMessage* dbus_reply = dbus_connection_send_with_reply_and_block(dbus_conn, dbus_msg, DBUS_TIMEOUT_USE_DEFAULT, &dbus_error);
+		dbus_message_unref(dbus_msg);
+		if (dbus_reply)
+		{
+			if (dbus_message_get_type(dbus_reply) == DBUS_MESSAGE_TYPE_METHOD_RETURN)
+			{
+				const std::string dbus_reply_Signature(dbus_message_get_signature(dbus_reply));
+				int indent(16);
+				if (!dbus_reply_Signature.compare("a{oa{sa{sv}}}"))
+				{
+					DBusMessageIter root_iter;
+					dbus_message_iter_init(dbus_reply, &root_iter);
+					do {
+						DBusMessageIter array1_iter;
+						dbus_message_iter_recurse(&root_iter, &array1_iter);
+						do {
+							indent += 4;
+							DBusMessageIter dict1_iter;
+							dbus_message_iter_recurse(&array1_iter, &dict1_iter);
+							DBusBasicValue value;
+							dbus_message_iter_get_basic(&dict1_iter, &value);
+							std::string dict1_object_path(value.str);
+							dbus_message_iter_next(&dict1_iter);
+							DBusMessageIter array2_iter;
+							dbus_message_iter_recurse(&dict1_iter, &array2_iter);
+							do
+							{
+								DBusMessageIter dict2_iter;
+								dbus_message_iter_recurse(&array2_iter, &dict2_iter);
+								dbus_message_iter_get_basic(&dict2_iter, &value);
+								std::string dict2_string(value.str);
+								if (!dict2_string.compare("org.bluez.Device1"))
+								{
+									dbus_message_iter_next(&dict2_iter);
+									DBusMessageIter array3_iter;
+									dbus_message_iter_recurse(&dict2_iter, &array3_iter);
+									const std::regex ModifiedBluetoothAddressRegex("((([[:xdigit:]]{2}_){5}))[[:xdigit:]]{2}");
+									std::smatch AddressMatch;
+									if (std::regex_search(dict1_object_path, AddressMatch, ModifiedBluetoothAddressRegex))
+									{
+										std::string BluetoothAddress(AddressMatch.str());
+										std::replace(BluetoothAddress.begin(), BluetoothAddress.end(), '_', ':');
+										bdaddr_t localBTAddress(string2ba(BluetoothAddress));
+										auto BT_Device = KnownDevices.find(localBTAddress);
+										if (BT_Device != KnownDevices.end())
+											ObjectsToDelete.push(dict1_object_path);
+									}
+								}
+							} while (dbus_message_iter_next(&array2_iter));
+							indent -= 4;
+						} while (dbus_message_iter_next(&array1_iter));
+					} while (dbus_message_iter_next(&root_iter));
+				}
+			}
+			dbus_message_unref(dbus_reply);
+		}
+		dbus_error_free(&dbus_error);
+	}
+	while (!ObjectsToDelete.empty())
+	{
+		dbus_msg = dbus_message_new_method_call("org.bluez", adapter_path, "org.bluez.Adapter1", "RemoveDevice");
+		if (dbus_msg)
+		{
+			DBusMessageIter iterParameter;
+			dbus_message_iter_init_append(dbus_msg, &iterParameter); // https://dbus.freedesktop.org/doc/api/html/group__DBusMessage.html#gaf733047c467ce21f4a53b65a388f1e9d
+			const char* Object = ObjectsToDelete.front().c_str();
+			dbus_message_iter_append_basic(&iterParameter, DBUS_TYPE_OBJECT_PATH, &Object); // https://dbus.freedesktop.org/doc/api/html/group__DBusMessage.html#ga17491f3b75b3203f6fc47dcc2e3b221b
+			// Initialize D-Bus error
+			DBusError dbus_error;
+			dbus_error_init(&dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusErrors.html#ga8937f0b7cdf8554fa6305158ce453fbe
+			DBusMessage* dbus_reply = dbus_connection_send_with_reply_and_block(dbus_conn, dbus_msg, DBUS_TIMEOUT_USE_DEFAULT, &dbus_error);
+			if (ConsoleVerbosity > 0)
+				ssOutput << "[                   ] ";
+			ssOutput << dbus_message_get_path(dbus_msg) << ": " << dbus_message_get_interface(dbus_msg) << ": " << dbus_message_get_member(dbus_msg) << " " << ObjectsToDelete.front();
+			if (dbus_error_is_set(&dbus_error))
+			{
+				std::string error(dbus_error.message);
+				for (auto pos = error.find('\r'); pos != std::string::npos; pos = error.find('\r'))
+					error.erase(pos, 1);
+				for (auto pos = error.find('\n'); pos != std::string::npos; pos = error.find('\n'))
+					error.erase(pos, 1);
+				ssOutput << " (" << error << ")";
+			}
+			ssOutput << std::endl;
+			dbus_error_free(&dbus_error);
+			dbus_message_unref(dbus_msg);
+		}
+		ObjectsToDelete.pop();
+	}
+	if (ConsoleVerbosity > 0)
+		std::cout << ssOutput.str();
+	else
+		std::cerr << ssOutput.str();
 }
 /////////////////////////////////////////////////////////////////////////////
 static void usage(int argc, char** argv)
@@ -2494,6 +2594,7 @@ int main(int argc, char** argv)
 				bRun = true;
 				time_t TimeStart(0), TimeSVG(0), TimeAdvertisment(0);
 				time(&TimeStart);
+				time_t TimeLog(TimeStart);
 				while (bRun)
 				{
 					// Wait for access to the D-Bus
@@ -2535,13 +2636,22 @@ int main(int argc, char** argv)
 						WriteAllSVG();
 					}
 					const int LogFileTime(60);
-					if (difftime(TimeNow, TimeStart) > LogFileTime)
+					if (difftime(TimeNow, TimeLog) > LogFileTime)
 					{
 						if (ConsoleVerbosity > 0)
 							std::cout << "[" << getTimeISO8601(true) << "] " << std::dec << LogFileTime << " seconds or more have passed. Writing LOG Files" << std::endl;
-						TimeStart = TimeNow;
+						TimeLog = TimeNow;
 						GenerateLogFile(VictronVirtualLog);
 						GenerateCacheFile(VictronSmartLithiumMRTGLogs); // flush FakeMRTG data to cache files
+					}
+					if (difftime(TimeNow, TimeStart) > 60 * 30) // Issue StartDiscovery command every 30 minutes to make sure it's not been turned off by another bluetooth process
+					{
+						if (ConsoleVerbosity > 1)
+							std::cout << "[" << getTimeISO8601(true) << "] " << "Restarting Scanning" << std::endl;
+						bluez_discovery(dbus_conn, BlueZAdapter.c_str(), false);
+						bluez_dbus_RemoveKnownDevices(dbus_conn, BlueZAdapter.c_str(), VictronNames);
+						bRun = bluez_discovery(dbus_conn, BlueZAdapter.c_str(), true);
+						TimeStart = TimeNow;
 					}
 				}
 				bluez_discovery(dbus_conn, BlueZAdapter.c_str(), false);
