@@ -2649,7 +2649,7 @@ int main(int argc, char** argv)
 						if (ConsoleVerbosity > 1)
 							std::cout << "[" << getTimeISO8601(true) << "] " << "Restarting Scanning" << std::endl;
 						bluez_discovery(dbus_conn, BlueZAdapter.c_str(), false);
-						bluez_dbus_RemoveKnownDevices(dbus_conn, BlueZAdapter.c_str(), VictronNames);
+						bluez_dbus_RemoveKnownDevices(dbus_conn, BlueZAdapter.c_str(), VictronEncryptionKeys);
 						bRun = bluez_discovery(dbus_conn, BlueZAdapter.c_str(), true);
 						TimeStart = TimeNow;
 					}
