@@ -680,6 +680,18 @@ union VictronExtraData_t {
 	} SolarCharger;  // 0x01
 	struct __attribute__((packed))
 	{
+		unsigned int ttg : 16;
+		unsigned int battery_voltage : 16;
+		unsigned int alarm_reason : 16;
+		unsigned int three_values : 16; // Aux Voltage, Mid Voltage, Temperature. Don't know how this is used. Temperature coud be 7 bits, but the other two are 16 bits in other devices.
+		unsigned int aux_input : 2;
+		unsigned int battery_current : 22;
+		unsigned int consumed_ah : 20;
+		unsigned int soc : 10;
+		//unsigned int unused : 10;
+	} BatteryMonitor; // 0x02
+	struct __attribute__((packed))
+	{
 		unsigned int device_state : 8;
 		unsigned int charger_error : 8;
 		unsigned int input_voltage : 16;
