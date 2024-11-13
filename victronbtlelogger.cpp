@@ -683,7 +683,9 @@ union VictronExtraData_t {
 		unsigned int ttg : 16;
 		unsigned int battery_voltage : 16;
 		unsigned int alarm_reason : 16;
-		unsigned int three_values : 16; // Aux Voltage, Mid Voltage, Temperature. Don't know how this is used. Temperature coud be 7 bits, but the other two are 16 bits in other devices.
+		unsigned int aux_voltage : 16;
+		unsigned int mid_voltage : 16;
+		unsigned int temperature : 16;
 		unsigned int aux_input : 2;
 		unsigned int battery_current : 22;
 		unsigned int consumed_ah : 20;
