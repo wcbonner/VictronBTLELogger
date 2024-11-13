@@ -157,7 +157,9 @@ Decoding the extra manufacturer data, Victron bit packs the extra data before en
 | 32 | 16 | TTG | 1min | 0 .. 45.5 days | 0xFFFF | VE_REG_TTG |
 | 48 | 16 | Battery voltage | 0.01V | -327.68..327.66 V | 0x7FFF | VE_REG_DC_CHANNEL1_VOLTAGE |
 | 64 | 16 | Alarm reason | | 0 .. 0xFFFF | | VE_REG_ALARM_REASON |
-| 80 | 16 | Aux voltage Mid voltage Temperature | 0.01V 0.01V 0.01K | -327.68..327.64 V 0..655.34 V 0..655.34 K | | VE_REG_DC_CHANNEL2_VOLTAGE VE_REG_BATTERY_MID_POINT_VOLTAGE VE_REG_BAT_TEMPERATURE |
+| 80 | 16 | Aux voltage | 0.01V | -327.68..327.64 V | | VE_REG_DC_CHANNEL2_VOLTAGE |
+| 80 | 16 | Mid voltage | 0.01V | 0..655.34 V | | VE_REG_BATTERY_MID_POINT_VOLTAGE |
+| 80 | 16 | Temperature | 0.01K | 0..655.34 K | | VE_REG_BAT_TEMPERATURE |
 | 96 | 2 | Aux input | | 0..3 | 0x3 | VE_REG_BMV_AUX_INPUT 0 ⇒ Aux voltage : VE_REG_DC_CHANNEL2_VOLTAGE 1 ⇒ Mid voltage : VE_REG_BATTERY_MID_POINT_VOLTAGE 2 ⇒ Temperature : VE_REG_BAT_TEMPERATURE 3 ⇒ none |
 | 98 | 22 | Battery current | 0.001A | -4194..4194 A | 0x3FFFFF | VE_REG_DC_CHANNEL1_CURRENT_MA |
 | 120 | 20 | Consumed Ah | 0.1Ah | -104,857..0 Ah | 0xFFFFF | VE_REG_CAH Consumed Ah = -Record value |
