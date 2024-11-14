@@ -88,12 +88,12 @@ void SignalHandlerSIGALRM(int signal)
 		std::cout << "[" << getTimeISO8601(true) << "] ***************** SIGALRM: Caught Alarm. *****************" << std::endl;
 }
 /////////////////////////////////////////////////////////////////////////////
-#ifndef bdaddr_t
+#ifndef __BLUETOOTH_H
 /* BD Address */
 typedef struct {
 	uint8_t b[6];
 } __attribute__((packed)) bdaddr_t;
-#endif // !bdaddr_t
+#endif // !__BLUETOOTH_H
 bool operator <(const bdaddr_t& a, const bdaddr_t& b)
 {
 	unsigned long long A = a.b[5];
