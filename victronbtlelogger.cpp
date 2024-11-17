@@ -2522,9 +2522,9 @@ int main(int argc, char** argv)
 	}
 	
 	if (ConsoleVerbosity > 0)
-		std::cout << "[" << getTimeISO8601(true) << "] " << ProgramVersionString << std::endl;
+		std::cout << "[" << getTimeISO8601(true) << "] " << ProgramVersionString << "  (starting)" << std::endl;
 	else
-		std::cerr << ProgramVersionString << std::endl;
+		std::cerr << ProgramVersionString << "  (starting)" << std::endl;
 
 	if (!SVGDirectory.empty())
 	{
@@ -2659,6 +2659,7 @@ int main(int argc, char** argv)
 							TimeLog = TimeNow;
 							GenerateLogFile(VictronVirtualLog);
 							GenerateCacheFile(VictronSmartLithiumMRTGLogs); // flush FakeMRTG data to cache files
+							//GenerateCacheFile(VictronOrionXSMRTGLogs); // flush FakeMRTG data to cache files
 						}
 #ifdef DEBUG
 					} while (bRun && difftime(TimeNow, TimeStart) < 30); // Maintain DBus connection for no more than 30 seconds
@@ -2681,6 +2682,9 @@ int main(int argc, char** argv)
 	GenerateLogFile(VictronVirtualLog);	// flush contents of accumulated map to logfiles
 	std::signal(SIGHUP, previousHandlerSIGHUP);	// Restore original Hangup signal handler
 	std::signal(SIGINT, previousHandlerSIGINT);	// Restore original Ctrl-C signal handler
-	std::cerr << ProgramVersionString << " (exiting)" << std::endl;
+	if (ConsoleVerbosity > 0)
+		std::cout << "[" << getTimeISO8601(true) << "] " << ProgramVersionString << "  (exiting)" << std::endl;
+	else
+		std::cerr << ProgramVersionString << " (exiting)" << std::endl;
 	return(EXIT_SUCCESS);
 }
