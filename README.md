@@ -7,6 +7,20 @@ Currently graphing SmartLithium Battery and Orion XS DC/DC Charger.
 ## Example SVG Output
 ![Image](./victron-CEA5D77BCD81-day.svg) ![Image](./victron-D3D19054EBF0-day.svg)
 
+## Quick Build Instructions
+```sh
+sudo apt install build-essential cmake git libdbus-1-dev libssl-dev
+git clone https://github.com/wcbonner/VictronBTLELogger.git
+cmake -S VictronBTLELogger -B VictronBTLELogger/build
+cmake --build VictronBTLELogger/build
+pushd VictronBTLELogger/build && cpack . && popd
+```
+Create file `/etc/victronbtlelogger/victronencryptionkeys.txt` in the following format using encryption keys captured from the VictronConnect App
+```
+CE:A5:D7:7B:CD:81  D9AB754E122C1234567890252795729F
+F9:48:CF:18:57:62  18C16EB18D3B12345678908B10B9140C
+```
+
 ## Useful starting links
 
 https://community.victronenergy.com/questions/187303/victron-bluetooth-advertising-protocol.html
