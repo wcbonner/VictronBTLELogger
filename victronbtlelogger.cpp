@@ -2630,7 +2630,7 @@ int main(int argc, char** argv)
 							dbus_bus_add_match(dbus_conn, MatchRule.c_str(), &dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusBus.html#ga4eb6401ba014da3dbe3dc4e2a8e5b3ef
 							if (dbus_error_is_set(&dbus_error))
 							{
-								std::cout << "Error adding a match rule on the D-Bus system bus: " << dbus_error.message << std::endl;
+								std::cerr << "Error adding a match rule on the D-Bus system bus: " << dbus_error.message << std::endl;
 								dbus_error_free(&dbus_error);
 							}
 						}
@@ -2690,6 +2690,16 @@ int main(int argc, char** argv)
 	#else
 						} while (bRun && difftime(TimeNow, TimeStart) < (60 * 30));  // Maintain DBus connection for no more than 30 minutes
 	#endif // DEBUG
+						for (auto& MatchRule : MatchRules)
+						{
+							dbus_error_init(&dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusErrors.html#ga8937f0b7cdf8554fa6305158ce453fbe
+							dbus_bus_remove_match(dbus_conn, MatchRule.c_str(), &dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusBus.html#ga4eb6401ba014da3dbe3dc4e2a8e5b3ef
+							if (dbus_error_is_set(&dbus_error))
+							{
+								std::cerr << "Error removing a match rule on the D-Bus system bus: " << dbus_error.message << std::endl;
+								dbus_error_free(&dbus_error);
+							}
+						}
 						bluez_discovery(dbus_conn, BlueZAdapter.c_str(), false);
 						bluez_dbus_RemoveKnownDevices(dbus_conn, BlueZAdapter.c_str(), VictronEncryptionKeys);
 						//bluez_filter_le(dbus_conn, BlueZAdapter.c_str(), false, false); // remove discovery filter
