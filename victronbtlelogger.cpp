@@ -2576,6 +2576,7 @@ int main(int argc, char** argv)
 	SignalHandlerPointer previousHandlerSIGHUP = std::signal(SIGHUP, SignalHandlerSIGHUP);	// Install Hangup signal handler
 
 	time_t TimeStart(0), TimeLog(0), TimeSVG(0);
+	std::ostringstream ssOutput;
 	// Main loop
 	bRun = true;
 	while (bRun)
@@ -2588,24 +2589,38 @@ int main(int argc, char** argv)
 		DBusConnection* dbus_conn = dbus_bus_get_private(DBUS_BUS_SYSTEM, &dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusBus.html#ga77ba5250adb84620f16007e1b023cf26
 		if (dbus_error_is_set(&dbus_error)) // https://dbus.freedesktop.org/doc/api/html/group__DBusErrors.html#gab0ed62e9fc2685897eb2d41467c89405
 		{
-			std::cout << "[" << getTimeISO8601(true) << "] Error connecting to the D-Bus system bus: " << dbus_error.message << std::endl;
+			if (ConsoleVerbosity > 0)
+				ssOutput << "[" << getTimeISO8601(true) << "] ";
+			ssOutput << "Error connecting to the D-Bus system bus: " << dbus_error.message;
 			dbus_error_free(&dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusErrors.html#gaac6c14ead14829ee4e090f39de6a7568
+			if (ConsoleVerbosity > 0)
+				std::cout << ssOutput.str() << std::endl;
+			else
+				std::cerr << ssOutput.str() << std::endl;
+			ssOutput = std::ostringstream(); // reinitialize my output stringstream
 		}
 		else
 		{
 			if (ConsoleVerbosity > 0)
-				std::cout << "[" << getTimeISO8601(true) << "] D-Bus connection \"" << dbus_bus_get_unique_name(dbus_conn) << "\" Opened" << std::endl; // https://dbus.freedesktop.org/doc/api/html/group__DBusBus.html#ga8c10339a1e62f6a2e5752d9c2270d37b
+				ssOutput << "[" << getTimeISO8601(true) << "] ";
+			ssOutput << "D-Bus connection \"" << dbus_bus_get_unique_name(dbus_conn) << "\" Opened"; // https://dbus.freedesktop.org/doc/api/html/group__DBusBus.html#ga8c10339a1e62f6a2e5752d9c2270d37b
+			if (ConsoleVerbosity > 0)
+				std::cout << ssOutput.str() << std::endl;
 			else
-				std::cerr << "D-Bus connection \"" << dbus_bus_get_unique_name(dbus_conn) << "\" Opened" << std::endl; // https://dbus.freedesktop.org/doc/api/html/group__DBusBus.html#ga8c10339a1e62f6a2e5752d9c2270d37b
-
+				std::cerr << ssOutput.str() << std::endl;
+			ssOutput = std::ostringstream(); // reinitialize my output stringstream
 			std::map<bdaddr_t, std::string> BlueZAdapterMap;
 			bool bUse_HCI_Interface = !bluez_find_adapters(dbus_conn, BlueZAdapterMap);
 			if (bUse_HCI_Interface && BlueZAdapterMap.empty())
 			{
 				if (ConsoleVerbosity > 0)
-					std::cout << "[" << getTimeISO8601() << "] Could not get list of adapters from BlueZ over DBus. Reverting to HCI interface." << std::endl;
+					ssOutput << "[" << getTimeISO8601(true) << "] ";
+				ssOutput << "Could not get list of adapters from BlueZ over DBus. Reverting to HCI interface.";
+				if (ConsoleVerbosity > 0)
+					std::cout << ssOutput.str() << std::endl;
 				else
-					std::cerr << "Could not get list of adapters from BlueZ over DBus. Reverting to HCI interface." << std::endl;
+					std::cerr << ssOutput.str() << std::endl;
+				ssOutput = std::ostringstream(); // reinitialize my output stringstream
 			}
 			if (!BlueZAdapterMap.empty())
 			{
@@ -2626,13 +2641,23 @@ int main(int argc, char** argv)
 						MatchRules.push_back("type='signal',sender='org.bluez',member='PropertiesChanged'");
 						for (auto& MatchRule : MatchRules)
 						{
+							if (ConsoleVerbosity > 0)
+								ssOutput << "[                   ] ";
+							ssOutput << "Add Match Rule: \"" << MatchRule << "\"";
+							bool MatchRuleError(false);
 							dbus_error_init(&dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusErrors.html#ga8937f0b7cdf8554fa6305158ce453fbe
 							dbus_bus_add_match(dbus_conn, MatchRule.c_str(), &dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusBus.html#ga4eb6401ba014da3dbe3dc4e2a8e5b3ef
 							if (dbus_error_is_set(&dbus_error))
 							{
-								std::cerr << "Error adding a match rule on the D-Bus system bus: " << dbus_error.message << std::endl;
+								ssOutput << " Error: " << dbus_error.message;
 								dbus_error_free(&dbus_error);
+								MatchRuleError = true;
 							}
+							if (ConsoleVerbosity > 1)
+								std::cout << ssOutput.str() << std::endl;
+							else if (MatchRuleError)
+								std::cerr << ssOutput.str() << std::endl;
+							ssOutput = std::ostringstream(); // reinitialize my output stringstream
 						}
 						time_t TimeNow(0);
 						do
@@ -2642,9 +2667,13 @@ int main(int argc, char** argv)
 							{
 								time(&TimeNow);
 								if (ConsoleVerbosity > 0)
-									std::cout << "[" << timeToISO8601(TimeNow, true) << "] D-Bus connection Closed" << std::endl;
+									ssOutput << "[" << timeToISO8601(TimeNow, true) << "] ";
+								ssOutput << "D-Bus connection Closed";
+								if (ConsoleVerbosity > 0)
+									std::cout << ssOutput.str() << std::endl;
 								else
-									std::cerr << "D-Bus connection Closed" << std::endl;
+									std::cerr << ssOutput.str() << std::endl;
+								ssOutput = std::ostringstream(); // reinitialize my output stringstream
 								bRun = false;
 							}
 							else
@@ -2692,13 +2721,23 @@ int main(int argc, char** argv)
 	#endif // DEBUG
 						for (auto& MatchRule : MatchRules)
 						{
+							if (ConsoleVerbosity > 0)
+								ssOutput << "[                   ] ";
+							ssOutput << "Remove Match Rule: \"" << MatchRule << "\"";
+							bool MatchRuleError(false);
 							dbus_error_init(&dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusErrors.html#ga8937f0b7cdf8554fa6305158ce453fbe
 							dbus_bus_remove_match(dbus_conn, MatchRule.c_str(), &dbus_error); // https://dbus.freedesktop.org/doc/api/html/group__DBusBus.html#ga4eb6401ba014da3dbe3dc4e2a8e5b3ef
 							if (dbus_error_is_set(&dbus_error))
 							{
-								std::cerr << "Error removing a match rule on the D-Bus system bus: " << dbus_error.message << std::endl;
+								ssOutput << " Error: " << dbus_error.message;
 								dbus_error_free(&dbus_error);
+								MatchRuleError = true;
 							}
+							if (ConsoleVerbosity > 1)
+								std::cout << ssOutput.str() << std::endl;
+							else if (MatchRuleError)
+								std::cerr << ssOutput.str() << std::endl;
+							ssOutput = std::ostringstream(); // reinitialize my output stringstream
 						}
 						bluez_discovery(dbus_conn, BlueZAdapter.c_str(), false);
 						bluez_dbus_RemoveKnownDevices(dbus_conn, BlueZAdapter.c_str(), VictronEncryptionKeys);
@@ -2709,9 +2748,13 @@ int main(int argc, char** argv)
 					usleep(1000000); // 1,000,000 = 1 second.
 			}
 			if (ConsoleVerbosity > 0)
-				std::cout << "[" << getTimeISO8601(true) << "] D-Bus connection \"" << dbus_bus_get_unique_name(dbus_conn) << "\" Closed" << std::endl; // https://dbus.freedesktop.org/doc/api/html/group__DBusBus.html#ga8c10339a1e62f6a2e5752d9c2270d37b
+				ssOutput << "[" << getTimeISO8601(true) << "] ";
+			ssOutput << "D-Bus connection \"" << dbus_bus_get_unique_name(dbus_conn) << "\" Closed"; // https://dbus.freedesktop.org/doc/api/html/group__DBusBus.html#ga8c10339a1e62f6a2e5752d9c2270d37b
+			if (ConsoleVerbosity > 0)
+				std::cout << ssOutput.str() << std::endl;
 			else
-				std::cerr << "D-Bus connection \"" << dbus_bus_get_unique_name(dbus_conn) << "\" Closed" << std::endl; // https://dbus.freedesktop.org/doc/api/html/group__DBusBus.html#ga8c10339a1e62f6a2e5752d9c2270d37b
+				std::cerr << ssOutput.str() << std::endl;
+			ssOutput = std::ostringstream(); // reinitialize my output stringstream
 			dbus_connection_close(dbus_conn);	// https://dbus.freedesktop.org/doc/api/html/group__DBusConnection.html#ga2522ac5075dfe0a1535471f6e045e1ee
 			dbus_connection_unref(dbus_conn);	// https://dbus.freedesktop.org/doc/api/html/group__DBusConnection.html#ga6385ff09bc108238c4429e7c195dab25
 		}
