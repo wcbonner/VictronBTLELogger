@@ -2186,7 +2186,7 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 				} while (dbus_message_iter_next(&array3_iter));
 			}
 		}
-		else (!Key.compare("Name"))
+		else if (!Key.compare("Name"))
 		{
 			if ((DBUS_TYPE_STRING == dbus_message_Type) || (DBUS_TYPE_OBJECT_PATH == dbus_message_Type))
 			{
