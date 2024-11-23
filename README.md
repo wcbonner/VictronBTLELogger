@@ -5,7 +5,7 @@ Recieve Victron Bluetooth LE advertisments. Decrypt and log data by bluetooth ad
 Currently graphing SmartLithium Battery and Orion XS DC/DC Charger.
 
 ## Example SVG Output
-![Image](./victron-CEA5D77BCD81-day.svg) ![Image](./victron-D3D19054EBF0-day.svg)
+![Image](./victron-CEA5D77BCD81-day.svg) ![Image](./victron-CEA5D77BCD81-week.svg) ![Image](./victron-CEA5D77BCD81-month.svg) ![Image](./victron-CEA5D77BCD81-year.svg) ![Image](./victron-D3D19054EBF0-day.svg) ![Image](./victron-D3D19054EBF0-week.svg) ![Image](./victron-D3D19054EBF0-month.svg) ![Image](./victron-D3D19054EBF0-year.svg)
 
 ## Quick Build Instructions
 ```sh

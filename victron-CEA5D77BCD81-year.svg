@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="500" height="135">
+	<!-- Created by: VictronBTLELogger Version 3.20241121.0 Built on: Nov 21 2024 at 17:26:13 -->
+	<clipPath id="GraphRegion"><polygon points="80,14 472,14 472,121 80,121" /></clipPath>
+	<style>
+		text { font-family: sans-serif; font-size: 12px; fill: dimgrey; }
+		line { stroke: dimgrey; }
+		polygon { fill-opacity: 0.5; }
+	</style>
+	<rect style="fill-opacity:0;stroke:grey;stroke-width:2" width="500" height="135" />
+	<text x="80" y="12">S/V Sola Battery 1 (CE:A5:D7:7B:CD:81)</text>
+	<text style="text-anchor:end" x="472" y="12">2024-11-23 00:00:00</text>
+	<text style="fill:blue;text-anchor:middle" x="12" y="50%" transform="rotate(270 12,67)">Temperature (65.1°F)</text>
+	<text style="fill:green;text-anchor:middle" x="24" y="50%" transform="rotate(270 24,67)">Voltage (13.49V)</text>
+	<text style="fill:green;text-anchor:middle" x="36" y="50%" transform="rotate(270 36,67)">(3.37V) (3.37V)</text>
+	<text style="fill:green;text-anchor:middle" x="48" y="50%" transform="rotate(270 48,67)">(3.37V) (3.37V)</text>
+	<line x1="78" y1="14" x2="474" y2="14"/>
+	<text style="fill:blue;text-anchor:end;dominant-baseline:middle" x="78" y="14">66.9</text>
+	<text style="fill:green;dominant-baseline:middle" x="474" y="14">13.5</text>
+	<line x1="78" y1="121" x2="474" y2="121"/>
+	<text style="fill:blue;text-anchor:end;dominant-baseline:middle" x="78" y="121">63.5</text>
+	<text style="fill:green;dominant-baseline:middle" x="474" y="121">3.4</text>
+	<line x1="80" y1="14" x2="80" y2="121"/>
+	<line x1="472" y1="14" x2="472" y2="121"/>
+	<line style="stroke-dasharray:1" x1="78" y1="40" x2="474" y2="40" />
+	<text style="fill:blue;text-anchor:end;dominant-baseline:middle" x="78" y="40">66.1</text>
+	<text style="fill:green;dominant-baseline:middle" x="474" y="40">11.0</text>
+	<line style="stroke-dasharray:1" x1="78" y1="66" x2="474" y2="66" />
+	<text style="fill:blue;text-anchor:end;dominant-baseline:middle" x="78" y="66">65.2</text>
+	<text style="fill:green;dominant-baseline:middle" x="474" y="66">8.4</text>
+	<line style="stroke-dasharray:1" x1="78" y1="92" x2="474" y2="92" />
+	<text style="fill:blue;text-anchor:end;dominant-baseline:middle" x="78" y="92">64.3</text>
+	<text style="fill:green;dominant-baseline:middle" x="474" y="92">5.9</text>
+	<polygon style="fill:red;stroke:red;fill-opacity:1;" points="77,121 83,118 83,124" />
+	<!-- Temperature -->
+	<polyline style="fill:none;stroke:blue;clip-path:url(#GraphRegion)" points="81,85 82,101 83,121 84,67 85,14 86,36 " />
+	<!-- Voltage -->
+	<polyline style="fill:lime;stroke:green;clip-path:url(#GraphRegion)" points="81,14 82,14 83,14 84,14 85,14 86,14 " />
+	<!-- Cell 0 Voltage -->
+	<polyline style="fill:lime;stroke:green;clip-path:url(#GraphRegion)" points="81,120 82,120 83,121 84,120 85,120 86,120 " />
+	<!-- Cell 1 Voltage -->
+	<polyline style="fill:lime;stroke:green;clip-path:url(#GraphRegion)" points="81,120 82,120 83,121 84,120 85,120 86,120 " />
+	<!-- Cell 2 Voltage -->
+	<polyline style="fill:lime;stroke:green;clip-path:url(#GraphRegion)" points="81,120 82,120 83,121 84,120 85,120 86,120 " />
+</svg>
