@@ -1984,30 +1984,13 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 		DBusMessageIter variant_iter;
 		dbus_message_iter_recurse(&dict2_iter, &variant_iter);
 		auto dbus_message_Type = dbus_message_iter_get_arg_type(&variant_iter);
-		if (!Key.compare("Name"))
+		if (!Key.compare("RSSI"))
 		{
-			if ((DBUS_TYPE_STRING == dbus_message_Type) || (DBUS_TYPE_OBJECT_PATH == dbus_message_Type))
+			if (DBUS_TYPE_INT16 == dbus_message_Type)
 			{
 				dbus_message_iter_get_basic(&variant_iter, &value);
-				std::string Name(value.str);
-				auto ElementInserted = VictronNames.insert(std::make_pair(dbusBTAddress, Name)); // Either get the existing record or insert a new one
-				if (!ElementInserted.second) // true if inserted, false if already exists
-					ElementInserted.first->second = Name;
-				ssOutput << "[" << timeToISO8601(TimeNow, true) << "] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << Name << std::endl;
+				ssOutput << "[                   ] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << value.i16 << std::endl;
 			}
-		}
-		else if (!Key.compare("UUIDs"))
-		{
-			DBusMessageIter array3_iter;
-			dbus_message_iter_recurse(&variant_iter, &array3_iter);
-			do
-			{
-				if (DBUS_TYPE_STRING == dbus_message_iter_get_arg_type(&array3_iter))
-				{
-					dbus_message_iter_get_basic(&array3_iter, &value);
-					ssOutput << "[                   ] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << value.str << std::endl;
-				}
-			} while (dbus_message_iter_next(&array3_iter));
 		}
 		else if (!Key.compare("ManufacturerData"))
 		{
@@ -2072,7 +2055,7 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 									}
 									if (ManufacturerData[7] == EncryptionKey[0]) // if stored key doesnt start with this data, we need to update stored key
 									{
-										uint8_t DecryptedData[32] { 0 };
+										uint8_t DecryptedData[32]{ 0 };
 										if (sizeof(DecryptedData) >= (ManufacturerData.size() - 8)) // simple check to make sure we don't buffer overflow
 										{
 											//[2024-09-04T04:47:30] [CE:A5:D7:7B:CD:81] Name: S/V Sola Batt 1
@@ -2097,7 +2080,7 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 											EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
 											if (ctx != 0)
 											{
-												uint8_t InitializationVector[16] { ManufacturerData[5], ManufacturerData[6], 0}; // The first two bytes are assigned, the rest of the 16 are padded with zero
+												uint8_t InitializationVector[16]{ ManufacturerData[5], ManufacturerData[6], 0 }; // The first two bytes are assigned, the rest of the 16 are padded with zero
 
 												if (1 == EVP_DecryptInit_ex(ctx, EVP_aes_128_ctr(), NULL, EncryptionKey.data(), InitializationVector))
 												{
@@ -2109,10 +2092,10 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 															// We have decrypted data!
 															ManufacturerData[5] = ManufacturerData[6] = ManufacturerData[7] = 0; // I'm writing a zero here to remind myself I've decoded the data already
 															for (auto index = 0; index < ManufacturerData.size() - 8; index++) // copy the decoded data over the original data
-																ManufacturerData[index+8] = DecryptedData[index];
+																ManufacturerData[index + 8] = DecryptedData[index];
 															std::ostringstream ssLogEntry;
 															ssLogEntry << timeToISO8601(TimeNow) << "\t";
-															for (auto &a : ManufacturerData)
+															for (auto& a : ManufacturerData)
 																ssLogEntry << std::setfill('0') << std::hex << std::setw(2) << int(a);
 															std::queue<std::string> foo;
 															auto ret = VictronVirtualLog.insert(std::pair<bdaddr_t, std::queue<std::string>>(dbusBTAddress, foo)); // Either get the existing record or insert a new one
@@ -2203,6 +2186,49 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 				} while (dbus_message_iter_next(&array3_iter));
 			}
 		}
+		else (!Key.compare("Name"))
+		{
+			if ((DBUS_TYPE_STRING == dbus_message_Type) || (DBUS_TYPE_OBJECT_PATH == dbus_message_Type))
+			{
+				dbus_message_iter_get_basic(&variant_iter, &value);
+				std::string Name(value.str);
+				auto ElementInserted = VictronNames.insert(std::make_pair(dbusBTAddress, Name)); // Either get the existing record or insert a new one
+				if (!ElementInserted.second) // true if inserted, false if already exists
+					ElementInserted.first->second = Name;
+				ssOutput << "[" << timeToISO8601(TimeNow, true) << "] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << Name << std::endl;
+			}
+		}
+		else if (!Key.compare("UUIDs"))
+		{
+			DBusMessageIter array3_iter;
+			dbus_message_iter_recurse(&variant_iter, &array3_iter);
+			do
+			{
+				if (DBUS_TYPE_STRING == dbus_message_iter_get_arg_type(&array3_iter))
+				{
+					dbus_message_iter_get_basic(&array3_iter, &value);
+					ssOutput << "[                   ] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << value.str << std::endl;
+				}
+			} while (dbus_message_iter_next(&array3_iter));
+		}
+		else if (!Key.compare("Connected"))
+		{
+			if (DBUS_TYPE_BOOLEAN == dbus_message_Type)
+			{
+				dbus_message_iter_get_basic(&variant_iter, &value);
+				ssOutput << "[                   ] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << std::boolalpha << bool(value.bool_val) << std::endl;
+			}
+		}
+		else if (!Key.compare("ServicesResolved"))
+		{
+			if (DBUS_TYPE_BOOLEAN == dbus_message_Type)
+			{
+				dbus_message_iter_get_basic(&variant_iter, &value);
+				ssOutput << "[                   ] [" << ba2string(dbusBTAddress) << "] " << Key << ": " << std::boolalpha << bool(value.bool_val) << std::endl;
+			}
+		}
+		else
+			ssOutput << "[                   ] [" << ba2string(dbusBTAddress) << "] " << Key << std::endl;
 	} while (dbus_message_iter_next(&array_iter));
 	return(ssOutput.str());
 }
