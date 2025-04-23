@@ -2743,7 +2743,7 @@ int main(int argc, char** argv)
 	#ifdef DEBUG
 						} while (bRun && difftime(TimeNow, TimeStart) < 30); // Maintain DBus connection for no more than 30 seconds
 	#else
-						} while (bRun && difftime(TimeNow, TimeStart) < (60 * 30));  // Maintain DBus connection for no more than 30 minutes
+						} while (bRun && difftime(TimeNow, TimeStart) < (60 * 60 * 24));  // Maintain DBus connection for no more than 24 hours
 	#endif // DEBUG
 						for (auto& MatchRule : MatchRules)
 						{
