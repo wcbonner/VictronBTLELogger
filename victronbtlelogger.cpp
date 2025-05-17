@@ -2769,9 +2769,9 @@ int main(int argc, char** argv)
 						bluez_dbus_RemoveKnownDevices(dbus_conn, BlueZAdapter.c_str(), VictronEncryptionKeys);
 						//bluez_filter_le(dbus_conn, BlueZAdapter.c_str(), false, false); // remove discovery filter
 					}
+					else
+						bluez_power_on(dbus_conn, BlueZAdapter.c_str(), false);
 				}
-				else
-					usleep(1000000); // 1,000,000 = 1 second.
 			}
 			if (ConsoleVerbosity > 0)
 				ssOutput << "[" << getTimeISO8601(true) << "] ";
