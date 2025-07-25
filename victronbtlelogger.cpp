@@ -1004,9 +1004,9 @@ bool VictronOrionXS::ReadManufacturerData(const std::vector<uint8_t>& Manufactur
 				Time = newtime;
 			VictronExtraData_t* ExtraDataPtr = (VictronExtraData_t*)(ManufacturerData.data() + 8);
 			if (ExtraDataPtr->OrionXS.output_voltage != 0x7FFF) OutputVoltage = double(ExtraDataPtr->OrionXS.output_voltage) * 0.01;
-			if (ExtraDataPtr->OrionXS.output_current != 0x7FFF) OutputCurrent = double(ExtraDataPtr->OrionXS.output_current) * 0.01;
+			if (ExtraDataPtr->OrionXS.output_current != 0x7FFF) OutputCurrent = double(ExtraDataPtr->OrionXS.output_current) * 0.1;
 			if (ExtraDataPtr->OrionXS.input_voltage != 0xFFFF) InputVoltage = double(ExtraDataPtr->OrionXS.input_voltage) * 0.01;
-			if (ExtraDataPtr->OrionXS.input_current != 0xFFFF) InputCurrent = double(ExtraDataPtr->OrionXS.input_current) * 0.01;
+			if (ExtraDataPtr->OrionXS.input_current != 0xFFFF) InputCurrent = double(ExtraDataPtr->OrionXS.input_current) * 0.1;
 			Averages = 1;
 			rval = true;
 		}
@@ -2166,9 +2166,9 @@ std::string bluez_dbus_msg_iter(DBusMessageIter& array_iter, const bdaddr_t& dbu
 																	ssOutput << std::dec;
 																	ssOutput << " (Orion XS)";
 																	ssOutput << " output_voltage:" << float(ExtraDataPtr->OrionXS.output_voltage) * 0.01 << "V";
-																	ssOutput << " output_current:" << float(ExtraDataPtr->OrionXS.output_current) * 0.01 << "A";
+																	ssOutput << " output_current:" << float(ExtraDataPtr->OrionXS.output_current) * 0.1 << "A";
 																	ssOutput << " input_voltage:" << float(ExtraDataPtr->OrionXS.input_voltage) * 0.01 << "V";
-																	ssOutput << " input_current:" << float(ExtraDataPtr->OrionXS.input_current) * 0.01 << "A";
+																	ssOutput << " input_current:" << float(ExtraDataPtr->OrionXS.input_current) * 0.1 << "A";
 																}
 															}
 														}

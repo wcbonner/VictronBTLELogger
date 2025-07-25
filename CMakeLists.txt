@@ -21,7 +21,7 @@ if (POLICY CMP0115)
 endif()
 
 project (VictronBTLELogger
-    VERSION 3.20250516.0
+    VERSION 3.20250724.0
     DESCRIPTION "Log Victron Direct Bluetooth LE messages and graph battery states"
     HOMEPAGE_URL https://github.com/wcbonner/VictronBTLELogger
 )
