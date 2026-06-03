@@ -30,7 +30,6 @@
 #include <getopt.h>
 #include <fcntl.h>      // open, O_NONBLOCK
 #include <filesystem>
-#include <fcntl.h>      // open, O_NONBLOCK
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -2489,8 +2488,7 @@ void bluez_dbus_RemoveKnownDevices(DBusConnection* dbus_conn, const char* adapte
 }
 /////////////////////////////////////////////////////////////////////////////
 // https://www.kernel.org/doc/html/latest/driver-api/rfkill.html
-// Helper function to get rfkill type name
-const char* rfkillTypeName(const uint8_t type)
+const char* rfkillTypeName(const uint8_t type) // Helper function to get rfkill type name
 {
 	switch (type)
 	{
@@ -2505,9 +2503,7 @@ const char* rfkillTypeName(const uint8_t type)
 	default: return "Unknown";
 	}
 }
-
-// Function to check Bluetooth status
-bool rfkillisBluetoothSoftBlocked()
+bool rfkillisBluetoothSoftBlocked() // Function to check Bluetooth status
 {
 	bool result = false;
 	std::ostringstream ssOutput;
@@ -2545,7 +2541,6 @@ bool rfkillisBluetoothSoftBlocked()
 					break;
 				}
 			}
-
 			if (len != sizeof(event))
 			{
 				if (ConsoleVerbosity > 0)
@@ -2553,7 +2548,6 @@ bool rfkillisBluetoothSoftBlocked()
 				ssOutput << rfkillPath << " Short read from rfkill device." << std::endl;
 				break;
 			}
-
 			if (event.soft || event.hard || (ConsoleVerbosity > 1))
 			{
 				if (event.soft || event.hard)
@@ -2577,9 +2571,7 @@ bool rfkillisBluetoothSoftBlocked()
 		std::cerr << ssOutput.str();
 	return(result);
 }
-
-// Function to soft unblock Bluetooth
-bool rfkillUnblockBluetooth()
+bool rfkillUnblockBluetooth() // Function to soft unblock Bluetooth
 {
 	bool result = false;
 	std::ostringstream ssOutput;
