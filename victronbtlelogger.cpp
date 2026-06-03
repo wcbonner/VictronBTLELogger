@@ -30,10 +30,10 @@
 #include <getopt.h>
 #include <fcntl.h>      // open, O_NONBLOCK
 #include <filesystem>
+#include <fcntl.h>      // open, O_NONBLOCK
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <limits>
 #include <linux/rfkill.h>
 #include <locale>
 #include <map>
@@ -41,7 +41,6 @@
 #include <queue>
 #include <regex>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 #include <utime.h>
 #include <vector>
@@ -2490,7 +2489,8 @@ void bluez_dbus_RemoveKnownDevices(DBusConnection* dbus_conn, const char* adapte
 }
 /////////////////////////////////////////////////////////////////////////////
 // https://www.kernel.org/doc/html/latest/driver-api/rfkill.html
-const char* rfkillTypeName(const uint8_t type) // Helper function to get rfkill type name
+// Helper function to get rfkill type name
+const char* rfkillTypeName(const uint8_t type)
 {
 	switch (type)
 	{
@@ -2505,7 +2505,9 @@ const char* rfkillTypeName(const uint8_t type) // Helper function to get rfkill 
 	default: return "Unknown";
 	}
 }
-bool rfkillisBluetoothSoftBlocked() // Function to check Bluetooth status
+
+// Function to check Bluetooth status
+bool rfkillisBluetoothSoftBlocked()
 {
 	bool result = false;
 	std::ostringstream ssOutput;
@@ -2543,6 +2545,7 @@ bool rfkillisBluetoothSoftBlocked() // Function to check Bluetooth status
 					break;
 				}
 			}
+
 			if (len != sizeof(event))
 			{
 				if (ConsoleVerbosity > 0)
@@ -2550,6 +2553,7 @@ bool rfkillisBluetoothSoftBlocked() // Function to check Bluetooth status
 				ssOutput << rfkillPath << " Short read from rfkill device." << std::endl;
 				break;
 			}
+
 			if (event.soft || event.hard || (ConsoleVerbosity > 1))
 			{
 				if (event.soft || event.hard)
@@ -2573,7 +2577,9 @@ bool rfkillisBluetoothSoftBlocked() // Function to check Bluetooth status
 		std::cerr << ssOutput.str();
 	return(result);
 }
-bool rfkillUnblockBluetooth() // Function to soft unblock Bluetooth
+
+// Function to soft unblock Bluetooth
+bool rfkillUnblockBluetooth()
 {
 	bool result = false;
 	std::ostringstream ssOutput;
@@ -2723,6 +2729,10 @@ int main(int argc, char** argv)
 			std::cerr << "No Victron Encryption Keys Found! Exiting." << std::endl;
 		exit(EXIT_FAILURE);
 	}
+
+	if (rfkillisBluetoothSoftBlocked()) // Check rfkill status before trying to use Bluetooth. This will print a message and exit if Bluetooth is blocked by rfkill
+		rfkillUnblockBluetooth(); // Try to unblock Bluetooth if it is blocked by rfkill. This will print a message and exit if it fails to unblock Bluetooth
+	rfkillisBluetoothSoftBlocked(); // Check rfkill status again after trying to unblock, to show the new status
 
 	// Set up CTR-C signal handler
 	typedef void(*SignalHandlerPointer)(int);

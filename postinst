@@ -2,7 +2,9 @@
 # POSTINST script for victronbtlelogger
 
 echo "\033[36m HI I'M A POSTINST SCRIPT ${0} `date --rfc-3339='seconds'` running as \033[91m`whoami`\033[39m"
-adduser --system --ingroup www-data victronbtlelogger
+adduser --system victronbtlelogger
+adduser victronbtlelogger www-data
+adduser victronbtlelogger netdev
 mkdir --verbose --mode 0755 --parents /var/log/victronbtlelogger /var/cache/victronbtlelogger /var/www/html/victronbtlelogger
 chown --changes --recursive victronbtlelogger:www-data /var/log/victronbtlelogger /var/cache/victronbtlelogger /var/www/html/victronbtlelogger
 chmod --changes --recursive 0644 /var/log/victronbtlelogger/* /var/cache/victronbtlelogger/* /var/www/html/victronbtlelogger/*

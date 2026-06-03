@@ -21,6 +21,9 @@ CE:A5:D7:7B:CD:81  D9AB754E122C1234567890252795729F
 F9:48:CF:18:57:62  18C16EB18D3B12345678908B10B9140C
 ```
 
+### 2026-02-12 /dev/rfkill support
+I added support for /dev/rfkill to be able to automatically unblock rfkill. The user is now added to the netdev group which should give access to /dev/rfkill. If the user is not in the netdev group, or if rfkill is blocked, the program will attempt to unblock rfkill by writing "1" to /dev/rfkill. This should unblock all rfkill devices, including bluetooth. If this fails, the program will continue and attempt to read bluetooth data, which will likely fail until rfkill is unblocked manually.
+
 ## Useful starting links
 
 https://community.victronenergy.com/questions/187303/victron-bluetooth-advertising-protocol.html
